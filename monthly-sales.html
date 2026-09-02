@@ -1,184 +1,155 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>Monthly Sales</title>
-
-    <link rel="stylesheet" href="style.css">
-
-    <!-- SheetJS for XLSX generation -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Sales Portal | Monthly Report</title>
+    <link rel="stylesheet" href="style.css" />
 </head>
-
-
 <body>
 
-<div class="container">
-
-    <!-- Navigation -->
-    <nav class="navbar">
-
-        <div class="nav-brand">
-            School Sales
-        </div>
-
-        <div class="nav-links">
-
-            <a
-                href="index.html"
-                class="nav-link"
-            >
-                Daily Sales
-            </a>
-
-            <a
-                href="monthly-sales.html"
-                class="nav-link active"
-            >
-                Monthly Sales
-            </a>
-
-        </div>
-
-    </nav>
-
-
-    <!-- Header -->
-    <header class="header">
-
-        <h1>Monthly Sales Matrix</h1>
-
-        <p>Auto-generated from entered daily bills matching the Excel layout</p>
-
-    </header>
-
-
-    <!-- Filter & Export Controls -->
-    <section class="card">
-
-        <h2>Select Report Period</h2>
-
-        <div class="monthly-entry-controls" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
-
-            <div class="form-group">
-                <label for="salesMonth">Select Month</label>
-                <input
-                    type="month"
-                    id="salesMonth"
-                    required
-                >
+    <div class="container">
+        <!-- Shared Modern Navbar (Uniform active) -->
+        <header class="navbar">
+            <div class="nav-brand">
+                👋 Welcome, <span id="userEmailDisplay" class="welcome-user">Accountant</span>
             </div>
 
-            <div class="form-group">
-                <label for="monthlyBranchFilter">Branch</label>
-                <select id="monthlyBranchFilter">
-                    <option value="All">All Branches</option>
-                    <option value="Hadapsar">Hadapsar</option>
-                    <option value="Loni">Loni</option>
-                    <option value="Fursungi">Fursungi</option>
-                    <option value="Urli">Urli</option>
-                </select>
-            </div>
+            <nav class="nav-links">
+                <!-- Uniform Dropdown -->
+                <div class="nav-dropdown active">
+                    <button type="button" class="nav-dropbtn">
+                        Uniform ▾
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="index.html" class="dropdown-item">Daily Sales</a>
+                        <a href="monthly-sales.html" class="dropdown-item active">Monthly Report</a>
+                    </div>
+                </div>
 
-            <button
-                type="button"
-                id="clearMonthBtn"
-                class="clear-btn"
-                style="background-color: #e65100; color: white;"
-                >
-                Clear Selected Month
-            </button>
+                <!-- Books Dropdown -->
+                <div class="nav-dropdown">
+                    <button type="button" class="nav-dropbtn">
+                        Books ▾
+                    </button>
+                    <div class="dropdown-menu">
+                        <a href="books-daily.html" class="dropdown-item">Daily Sales</a>
+                        <a href="books-monthly.html" class="dropdown-item">Monthly Report</a>
+                    </div>
+                </div>
 
-            <button
-                type="button"
-                id="clearAllDataBtn"
-                class="clear-btn"
-                style="background-color: #c62828; color: white;"
-                >
-                Clear All Data
-            </button>
+                <!-- Logout Button -->
+                <button id="authBtn" type="button" class="logout-btn">Logout</button>
+            </nav>
+        </header>
 
+        <!-- Main Content (Hidden until authenticated by app.js) -->
+        <div id="appContainer" style="display: none;">
+            
+            <!-- Page Header Card -->
+            <header class="header">
+                <h1>Monthly Sales Matrix</h1>
+                <p>Auto-generated from entered daily bills matching the Excel layout</p>
+            </header>
 
-            <button
-                type="button"
-                id="exportXlsxBtn"
-                class="save-btn"
-                style="background-color: #2e7d32;"
-            >
-                Download as Excel (.xlsx)
-            </button>
+            <!-- Filter & Action Controls Card -->
+            <section class="card">
+                <h2>Select Report Period</h2>
 
+                <div class="monthly-entry-controls" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+                    <div class="form-group" style="min-width: 180px;">
+                        <label for="salesMonth">Select Month</label>
+                        <input type="month" id="salesMonth" required />
+                    </div>
+
+                    <div class="form-group" style="min-width: 180px;">
+                        <label for="monthlyBranchFilter">Branch</label>
+                        <select id="monthlyBranchFilter">
+                            <option value="All">All Branches</option>
+                            <option value="Hadapsar">Hadapsar</option>
+                            <option value="Loni">Loni</option>
+                            <option value="Fursungi">Fursungi</option>
+                            <option value="Urli">Urli</option>
+                        </select>
+                    </div>
+
+                    <button
+                        type="button"
+                        id="exportXlsxBtn"
+                        class="save-btn"
+                        style="background-color: #16a34a; color: white;"
+                    >
+                        Download as Excel (.xlsx)
+                    </button>
+
+                    <button
+                        type="button"
+                        id="clearMonthBtn"
+                        class="clear-btn"
+                        style="background-color: #ea580c; color: white; border: none;"
+                    >
+                        Clear Selected Month
+                    </button>
+
+                    <button
+                        type="button"
+                        id="clearAllDataBtn"
+                        class="clear-btn"
+                        style="background-color: #dc2626; color: white; border: none;"
+                    >
+                        Clear All Data
+                    </button>
+                </div>
+            </section>
+
+            <!-- Monthly Transaction Matrix View -->
+            <section class="card">
+                <div class="section-header">
+                    <h2>Transactions & Item Matrix</h2>
+                </div>
+
+                <div class="table-container" style="overflow-x: auto;">
+                    <table class="monthly-sales-table">
+                        <thead>
+                            <tr>
+                                <th>Bill No.</th>
+                                <th>Branch</th>
+                                <th>Transaction ID</th>
+                                <th>Transaction Req Date</th>
+                                <th>Settlement Date</th>
+                                <th>Transaction Amount</th>
+                                <th>SHIRT</th>
+                                <th>HALF PANTS</th>
+                                <th>FULL PANTS</th>
+                                <th>SKIRT</th>
+                                <th>SHOES</th>
+                                <th>SOCKS</th>
+                                <th>BLEZZER</th>
+                                <th>PT SHIRT</th>
+                                <th>PT PANTS</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="monthlySalesBody">
+                            <!-- Populated dynamically by monthly-sales.js -->
+                        </tbody>
+
+                        <tfoot id="tableTotalsFooter">
+                            <!-- Populated dynamically by monthly-sales.js -->
+                        </tfoot>
+                    </table>
+                </div>
+            </section>
         </div>
 
-    </section>
+        <!-- Footer -->
+        <footer>
+            <p>© 2026 School Sales Management System • Authenticated User Session</p>
+        </footer>
+    </div>
 
-
-    <!-- Monthly Transaction Matrix View -->
-    <section class="card">
-
-        <h2>Transactions & Item Matrix</h2>
-
-        <div class="table-container" style="overflow-x: auto;">
-
-            <table class="monthly-sales-table">
-
-                <thead>
-
-                    <tr>
-                        <th>Bill No.</th>
-                        <th>Branch</th>
-                        <th>Transaction ID</th>
-                        <th>Transaction Req Date</th>
-                        <th>Settlement Date</th>
-                        <th>Transaction Amount</th>
-                        <th>SHIRT</th>
-                        <th>HALF PANTS</th>
-                        <th>FULL PANTS</th>
-                        <th>SKIRT</th>
-                        <th>SHOES</th>
-                        <th>SOCKS</th>
-                        <th>BLEZZER</th>
-                        <th>PT SHIRT</th>
-                        <th>PT PANTS</th>
-                    </tr>
-
-                </thead>
-
-                <tbody id="monthlySalesBody">
-                </tbody>
-
-                <tfoot id="tableTotalsFooter">
-                </tfoot>
-
-            </table>
-
-        </div>
-
-    </section>
-
-
-    <!-- Footer -->
-    <footer>
-
-        <p>
-            School Sales Management System
-        </p>
-
-    </footer>
-
-</div>
-
-<script src="monthly-sales.js"></script>
-
+    <!-- Scripts: app.js handles auth check; monthly-sales.js populates matrix -->
+    <script src="app.js"></script>
+    <script src="monthly-sales.js"></script>
 </body>
-
 </html>
