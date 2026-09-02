@@ -69,8 +69,7 @@ function parseJwt(token) {
 }
 
 function redirectToLogin() {
-  const loginUrl = `${COGNITO_AUTH_DOMAIN}/oauth2/authorize?client_id=${COGNITO_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
-  window.location.replace(loginUrl);
+  window.location.replace("login.html");
 }
 
 function handleLogout() {
