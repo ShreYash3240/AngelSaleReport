@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Monthly Sales</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <!-- SheetJS for XLSX generation -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <!-- Navigation -->
+    <nav class="navbar">
+
+        <div class="nav-brand">
+            School Sales
+        </div>
+
+        <div class="nav-links">
+
+            <a
+                href="index.html"
+                class="nav-link"
+            >
+                Daily Sales
+            </a>
+
+            <a
+                href="monthly-sales.html"
+                class="nav-link active"
+            >
+                Monthly Sales
+            </a>
+
+        </div>
+
+    </nav>
+
+
+    <!-- Header -->
+    <header class="header">
+
+        <h1>Monthly Sales Matrix</h1>
+
+        <p>Auto-generated from entered daily bills matching the Excel layout</p>
+
+    </header>
+
+
+    <!-- Filter & Export Controls -->
+    <section class="card">
+
+        <h2>Select Report Period</h2>
+
+        <div class="monthly-entry-controls" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+
+            <div class="form-group">
+                <label for="salesMonth">Select Month</label>
+                <input
+                    type="month"
+                    id="salesMonth"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="monthlyBranchFilter">Branch</label>
+                <select id="monthlyBranchFilter">
+                    <option value="All">All Branches</option>
+                    <option value="Hadapsar">Hadapsar</option>
+                    <option value="Loni">Loni</option>
+                    <option value="Fursungi">Fursungi</option>
+                    <option value="Urli">Urli</option>
+                </select>
+            </div>
+
+            <button
+                type="button"
+                id="clearMonthBtn"
+                class="clear-btn"
+                style="background-color: #e65100; color: white;"
+                >
+                Clear Selected Month
+            </button>
+
+            <button
+                type="button"
+                id="clearAllDataBtn"
+                class="clear-btn"
+                style="background-color: #c62828; color: white;"
+                >
+                Clear All Data
+            </button>
+
+
+            <button
+                type="button"
+                id="exportXlsxBtn"
+                class="save-btn"
+                style="background-color: #2e7d32;"
+            >
+                Download as Excel (.xlsx)
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- Monthly Transaction Matrix View -->
+    <section class="card">
+
+        <h2>Transactions & Item Matrix</h2>
+
+        <div class="table-container" style="overflow-x: auto;">
+
+            <table class="monthly-sales-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Bill No.</th>
+                        <th>Branch</th>
+                        <th>Transaction ID</th>
+                        <th>Transaction Req Date</th>
+                        <th>Settlement Date</th>
+                        <th>Transaction Amount</th>
+                        <th>SHIRT</th>
+                        <th>HALF PANTS</th>
+                        <th>FULL PANTS</th>
+                        <th>SKIRT</th>
+                        <th>SHOES</th>
+                        <th>SOCKS</th>
+                        <th>BLEZZER</th>
+                        <th>PT SHIRT</th>
+                        <th>PT PANTS</th>
+                    </tr>
+
+                </thead>
+
+                <tbody id="monthlySalesBody">
+                </tbody>
+
+                <tfoot id="tableTotalsFooter">
+                </tfoot>
+
+            </table>
+
+        </div>
+
+    </section>
+
+
+    <!-- Footer -->
+    <footer>
+
+        <p>
+            School Sales Management System
+        </p>
+
+    </footer>
+
+</div>
+
+<script src="monthly-sales.js"></script>
+
+</body>
+
+</html>
