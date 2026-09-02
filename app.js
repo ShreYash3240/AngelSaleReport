@@ -50,7 +50,7 @@ let currentBills = [];
 // ==================================================
 const COGNITO_AUTH_DOMAIN = "https://school-sales-app-auth.auth.ap-south-1.amazoncognito.com";
 const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
-const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com";
+const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
 
 const authBtn = document.getElementById("authBtn");
 const userEmailDisplay = document.getElementById("userEmailDisplay");
