@@ -46,7 +46,7 @@ const monthBranchFilter = document.getElementById("monthBranchFilter");
 let currentBills = [];
 
 // ==================================================
-// COGNITO & NAVIGATION CONFIGURATION
+// COGNITO AUTHENTICATION & GATEKEEPER
 // ==================================================
 const COGNITO_AUTH_DOMAIN = "https://school-sales-app-auth.auth.ap-south-1.amazoncognito.com";
 const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
@@ -68,50 +68,50 @@ function parseJwt(token) {
   }
 }
 
-function handleLoginRedirect() {
+function redirectToLogin() {
   const loginUrl = `${COGNITO_AUTH_DOMAIN}/oauth2/authorize?client_id=${COGNITO_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
   window.location.replace(loginUrl);
 }
 
 function handleLogout() {
-  // Clear sessionStorage so closing the tab or logging out invalidates session
+  // Clear the session token stored for this tab
   sessionStorage.removeItem("cognito_id_token");
+  
+  // Redirect to Cognito logout endpoint
   const logoutUrl = `${COGNITO_AUTH_DOMAIN}/logout?client_id=${COGNITO_CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
   window.location.replace(logoutUrl);
 }
 
-function checkAuthState() {
-  // 1. Process token from URL hash on OAuth callback
+function enforceAuthentication() {
+  // 1. Capture token from URL hash on redirect
   const hash = window.location.hash.substring(1);
   if (hash) {
     const params = new URLSearchParams(hash);
     const idToken = params.get("id_token");
     if (idToken) {
       sessionStorage.setItem("cognito_id_token", idToken);
-      window.history.replaceState(null, "", window.location.pathname); // Clean up address bar
+      window.history.replaceState(null, "", window.location.pathname);
     }
   }
 
-  // 2. Validate token stored in current browser session
+  // 2. Validate current session token
   const token = sessionStorage.getItem("cognito_id_token");
   if (!token) {
-    handleLoginRedirect();
+    redirectToLogin();
     return false;
   }
 
   const payload = parseJwt(token);
-  // Check expiration (exp is in seconds)
   if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
     sessionStorage.removeItem("cognito_id_token");
-    handleLoginRedirect();
+    redirectToLogin();
     return false;
   }
 
-  // 3. User authenticated: display welcome message & unhide app
-  const welcomeMsg = document.getElementById("welcomeMsg");
-  if (welcomeMsg) {
-    const nameOrEmail = payload.name || payload.email || "Accountant";
-    welcomeMsg.textContent = `Welcome, ${nameOrEmail}`;
+  // 3. User is valid -> update greeting & reveal main app
+  const emailDisplay = document.getElementById("userEmailDisplay");
+  if (emailDisplay) {
+    emailDisplay.textContent = payload.name || payload.email || "Accountant";
   }
 
   const appContainer = document.getElementById("appContainer");
@@ -119,16 +119,20 @@ function checkAuthState() {
     appContainer.style.display = "block";
   }
 
-  const logoutBtn = document.getElementById("logoutBtn");
-  if (logoutBtn) {
-    logoutBtn.onclick = handleLogout;
+  // 4. Attach event listeners
+  const authBtn = document.getElementById("authBtn");
+  if (authBtn) {
+    authBtn.onclick = (e) => {
+      e.preventDefault();
+      handleLogout();
+    };
   }
 
   return true;
 }
 
-// Execute on load
-checkAuthState();
+// Execute gatekeeper immediately
+enforceAuthentication();
 
 
 // --------------------------------------------------
