@@ -29,6 +29,19 @@ const BOOK_ITEMS = ["TOTAL AMOUNT", "TEXTBOOKS SET", "NOTEBOOK SET"];
 // ==================================================
 // AUTHENTICATION CHECK
 // ==================================================
+// Auth Config
+
+const COGNITO_AUTH_DOMAIN = "https://school-sales-app-auth.auth.ap-south-1.amazoncognito.com";
+const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
+const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
+
+function handleLogout() {
+    sessionStorage.clear();
+    localStorage.removeItem("cognito_id_token");
+    const logoutUrl = `${COGNITO_AUTH_DOMAIN}/logout?client_id=${COGNITO_CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
+    window.location.replace(logoutUrl);
+}
+
 function enforceAuth() {
     const token = sessionStorage.getItem("cognito_id_token");
     if (!token) return window.location.replace("login.html");
@@ -46,16 +59,30 @@ function enforceAuth() {
         const emailDisplay = document.getElementById("userEmailDisplay");
         if (emailDisplay) emailDisplay.textContent = payload.name || payload.email || "Accountant";
 
-        document.getElementById("appContainer").style.display = "block";
-        document.getElementById("authBtn").onclick = () => {
-            sessionStorage.removeItem("cognito_id_token");
-            window.location.replace("login.html");
-        };
+        const appContainer = document.getElementById("appContainer");
+        if (appContainer) appContainer.style.display = "block";
+
+        const authBtn = document.getElementById("authBtn");
+        if (authBtn) {
+            authBtn.onclick = (e) => {
+                e.preventDefault();
+                handleLogout();
+            };
+        }
     } catch {
         window.location.replace("login.html");
     }
 }
 enforceAuth();
+
+// Header helper for all fetch calls in books-daily.js
+function getAuthHeaders() {
+    const token = sessionStorage.getItem("cognito_id_token");
+    return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+    };
+}
 
 // ==================================================
 // PRICING LOOKUP

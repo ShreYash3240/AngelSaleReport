@@ -82,6 +82,16 @@ function enforceAuthentication() {
 }
 enforceAuthentication();
 
+// Helper to provide headers for all backend API calls
+function getAuthHeaders() {
+    const token = sessionStorage.getItem("cognito_id_token");
+    return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+    };
+}
+
+
 // ==================================================
 // PRICING LOOKUP (MATRIX DRIVEN)
 // ==================================================
