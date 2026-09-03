@@ -28,11 +28,11 @@ const todayBranchFilter = document.getElementById("todayBranchFilter");
 const PT_SIZES = ["24", "26", "28", "30", "32", "34", "36", "38", "40", "42", "44", "46"];
 
 // ==================================================
-// COGNITO AUTHENTICATION
+// COGNITO AUTHENTICATION & AUDIT HEADERS
 // ==================================================
 const COGNITO_AUTH_DOMAIN = "https://school-sales-app-auth.auth.ap-south-1.amazoncognito.com";
 const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
-const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/login.html";
+const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
 
 function parseJwt(token) {
     try {
@@ -49,8 +49,6 @@ function handleLogout() {
     const logoutUrl = `${COGNITO_AUTH_DOMAIN}/logout?client_id=${COGNITO_CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
     window.location.replace(logoutUrl);
 }
-
-
 
 function enforceAuthentication() {
     const hash = window.location.hash.substring(1);
@@ -82,7 +80,7 @@ function enforceAuthentication() {
 }
 enforceAuthentication();
 
-// Helper to provide headers for all backend API calls
+// Passes Cognito JWT to Lambda so CloudWatch captures developer audit logs
 function getAuthHeaders() {
     const token = sessionStorage.getItem("cognito_id_token");
     return {
@@ -90,7 +88,6 @@ function getAuthHeaders() {
         "Authorization": `Bearer ${token}`
     };
 }
-
 
 // ==================================================
 // PRICING LOOKUP (MATRIX DRIVEN)
@@ -116,7 +113,7 @@ function getItemUnitPrice(itemName, size = "") {
     // 1. PT Uniform: Price based purely on Size
     if (itemName === "PT SHIRT" || itemName === "PT PANT") {
         if (!size) return 0;
-        return PT_UNIFORM_PRICE_MATRIX[size]?.[itemName] ?? 0;
+        return typeof PT_UNIFORM_PRICE_MATRIX !== "undefined" ? (PT_UNIFORM_PRICE_MATRIX[size]?.[itemName] ?? 0) : 0;
     }
 
     // 2. Regular Uniform: Price based on Std & Gender
@@ -124,7 +121,7 @@ function getItemUnitPrice(itemName, size = "") {
     const gen = gender.value.trim();
     if (!std || !gen) return 0;
 
-    return UNIFORM_PRICE_MATRIX[std]?.[gen]?.[itemName] ?? 0;
+    return typeof UNIFORM_PRICE_MATRIX !== "undefined" ? (UNIFORM_PRICE_MATRIX[std]?.[gen]?.[itemName] ?? 0) : 0;
 }
 
 // ==================================================
@@ -273,7 +270,9 @@ function handlePaymentMode() {
 
 async function setNextBillNumber() {
     try {
-        const res = await fetch(`${API_BASE_URL}/bills`);
+        const res = await fetch(`${API_BASE_URL}/bills`, {
+            headers: getAuthHeaders()
+        });
         if (!res.ok) throw new Error();
         const bills = await res.json();
         const max = bills.reduce((m, b) => Math.max(m, parseInt(b.billNo, 10) || 0), 0);
@@ -305,7 +304,9 @@ async function fetchAndDisplayTodayBills() {
     if (filter !== "All") url += `&branch=${encodeURIComponent(filter)}`;
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: getAuthHeaders()
+        });
         if (!res.ok) throw new Error();
         const bills = await res.json();
 
@@ -329,7 +330,7 @@ async function fetchAndDisplayTodayBills() {
                     <td>${escapeHTML(bill.branch || "-")}</td>
                     <td>${escapeHTML(bill.billNo)}</td>
                     <td>${escapeHTML(bill.standard)}</td>
-                    <td>${escapeHTML(bill.gender)}</td>
+                    <td>${escapeHTML(bill.gender || "")}</td>
                     <td>${escapeHTML(bill.paymentMode || "")}</td>
                     <td>${escapeHTML(bill.transactionId || "-")}</td>
                     <td class="item-list">${itemNames}</td>
@@ -355,8 +356,13 @@ async function fetchAndDisplayTodayBills() {
 async function deleteBill(bBranch, bDate, bNo) {
     if (!confirm(`Delete Bill #${bNo}?`)) return;
     try {
-        const res = await fetch(`${API_BASE_URL}/bills?branch=${encodeURIComponent(bBranch)}&billDate=${bDate}&billNo=${bNo}`, { method: "DELETE" });
-        if (!res.ok) throw new Error((await res.json()).message || "Delete failed");
+        const res = await fetch(`${API_BASE_URL}/bills?branch=${encodeURIComponent(bBranch)}&billDate=${bDate}&billNo=${bNo}`, { 
+            method: "DELETE",
+            headers: getAuthHeaders() // Transmits token for DELETE_BILL audit log
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Delete failed");
+        
         alert(`Bill #${bNo} deleted.`);
         fetchAndDisplayTodayBills();
         setNextBillNumber();
@@ -492,7 +498,7 @@ billForm?.addEventListener("submit", async (e) => {
     try {
         const res = await fetch(`${API_BASE_URL}/bills`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(), // Transmits token for CREATE_BILL audit log
             body: JSON.stringify(payload)
         });
         const data = await res.json();
