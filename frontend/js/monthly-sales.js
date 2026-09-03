@@ -36,12 +36,12 @@ function handleLogout() {
     sessionStorage.clear();
     localStorage.removeItem("cognito_id_token");
     localStorage.removeItem("selectedBranch");
-    window.location.replace("login.html");
+    window.location.replace("/login.html");
 }
 
 (function enforceAuth() {
     const token = sessionStorage.getItem("cognito_id_token");
-    if (!token) return window.location.replace("login.html");
+    if (!token) return window.location.replace("/login.html");
 
     try {
         const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -50,7 +50,7 @@ function handleLogout() {
 
         if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
             sessionStorage.removeItem("cognito_id_token");
-            return window.location.replace("login.html");
+            return window.location.replace("/login.html");
         }
 
         const emailDisplay = document.getElementById("userEmailDisplay");
@@ -67,7 +67,7 @@ function handleLogout() {
             };
         }
     } catch {
-        window.location.replace("login.html");
+        window.location.replace("/login.html");
     }
 })();
 
@@ -100,6 +100,26 @@ function setMonthRange(year, monthIndex) {
 
     reportFromDate.value = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
     reportToDate.value = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+}
+
+// Generates an array of all "YYYY-MM" partitions between two dates
+function getMonthsInRange(fromStr, toStr) {
+    const months = [];
+    const [fromY, fromM] = fromStr.split("-").map(Number);
+    const [toY, toM] = toStr.split("-").map(Number);
+
+    let curY = fromY;
+    let curM = fromM;
+
+    while (curY < toY || (curY === toY && curM <= toM)) {
+        months.push(`${curY}-${String(curM).padStart(2, "0")}`);
+        curM++;
+        if (curM > 12) {
+            curM = 1;
+            curY++;
+        }
+    }
+    return months;
 }
 
 // ==================================================
@@ -188,34 +208,38 @@ async function loadReport() {
     reportBody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 24px;">Generating uniform report...</td></tr>`;
     if (reportEmptyMessage) reportEmptyMessage.style.display = "none";
 
-    const startMonth = from.slice(0, 7);
-    const endMonth = to.slice(0, 7);
+    const monthsToFetch = getMonthsInRange(from, to);
 
     try {
-        let bills = [];
+        let allBills = [];
 
-        // Query start month
-        let url1 = `${API_BASE_URL}/bills?department=Uniform&month=${startMonth}`;
-        if (branch !== "All") url1 += `&branch=${encodeURIComponent(branch)}`;
-        const res1 = await fetch(url1, { headers: getAuthHeaders() });
-        if (res1.ok) bills = await res1.json();
-
-        // If range spans across multiple months
-        if (startMonth !== endMonth) {
-            let url2 = `${API_BASE_URL}/bills?department=Uniform&month=${endMonth}`;
-            if (branch !== "All") url2 += `&branch=${encodeURIComponent(branch)}`;
-            const res2 = await fetch(url2, { headers: getAuthHeaders() });
-            if (res2.ok) {
-                const extra = await res2.json();
-                bills = [...bills, ...extra];
+        for (const month of monthsToFetch) {
+            let url = `${API_BASE_URL}/bills?department=Uniform&month=${month}`;
+            if (branch !== "All") url += `&branch=${encodeURIComponent(branch)}`;
+            
+            const res = await fetch(url, { headers: getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                allBills = allBills.concat(data);
             }
         }
 
-        // Filter exact inclusive range and Uniform department
-        cachedUniformBills = bills.filter(b => (!b.department || b.department === "Uniform") && b.billDate >= from && b.billDate <= to);
+        // Filter exact inclusive range and prevent duplicate keys
+        const seen = new Set();
+        cachedUniformBills = allBills.filter(b => {
+            if (b.department && b.department !== "Uniform") return false;
+            if (b.billDate < from || b.billDate > to) return false;
+            const key = `${b.branch || ""}_${b.billDate}_${b.billNo}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
 
         // Sort descending by date, then bill number
-        cachedUniformBills.sort((a, b) => (b.billDate || "").localeCompare(a.billDate || "") || String(b.billNo).localeCompare(String(a.billNo)));
+        cachedUniformBills.sort((a, b) => 
+            (b.billDate || "").localeCompare(a.billDate || "") || 
+            String(b.billNo).localeCompare(String(a.billNo))
+        );
 
         renderReportTable(cachedUniformBills);
     } catch (err) {
@@ -281,22 +305,22 @@ function renderReportTable(bills) {
 }
 
 // ==================================================
-// CHART.JS CLIENT-SIDE ANALYTICS
+// CHART.JS CLIENT-SIDE ANALYTICS (UNIFORM)
 // ==================================================
-let currentBookChart = null;
+let currentUniformChart = null;
 
-function renderBooksChart() {
+function renderUniformsChart() {
     const canvas = document.getElementById("salesChartCanvas");
     const chartTypeSelect = document.getElementById("chartTypeSelect");
     if (!canvas || !window.Chart) return;
 
     // Destroy existing chart instance before creating a new one
-    if (currentBookChart) {
-        currentBookChart.destroy();
-        currentBookChart = null;
+    if (currentUniformChart) {
+        currentUniformChart.destroy();
+        currentUniformChart = null;
     }
 
-    if (!bookBillsCache || bookBillsCache.length === 0) return;
+    if (!cachedUniformBills || cachedUniformBills.length === 0) return;
 
     const ctx = canvas.getContext("2d");
     const type = chartTypeSelect?.value || "bar";
@@ -304,12 +328,12 @@ function renderBooksChart() {
     if (type === "bar") {
         // Aggregate revenue by standard
         const stdTotals = {};
-        bookBillsCache.forEach(b => {
+        cachedUniformBills.forEach(b => {
             const std = b.standard || "Other";
             stdTotals[std] = (stdTotals[std] || 0) + (Number(b.total) || 0);
         });
 
-        currentBookChart = new Chart(ctx, {
+        currentUniformChart = new Chart(ctx, {
             type: "bar",
             data: {
                 labels: Object.keys(stdTotals),
@@ -349,12 +373,12 @@ function renderBooksChart() {
     } else if (type === "pie") {
         // Aggregate Cash vs Online collection
         const payTotals = { Cash: 0, "Online / UPI": 0 };
-        bookBillsCache.forEach(b => {
+        cachedUniformBills.forEach(b => {
             if (b.paymentMode === "Online") payTotals["Online / UPI"] += (Number(b.total) || 0);
             else payTotals["Cash"] += (Number(b.total) || 0);
         });
 
-        currentBookChart = new Chart(ctx, {
+        currentUniformChart = new Chart(ctx, {
             type: "pie",
             data: {
                 labels: Object.keys(payTotals),
@@ -382,7 +406,7 @@ function renderBooksChart() {
     } else if (type === "line") {
         // Daily timeline trend
         const dailyTotals = {};
-        bookBillsCache.forEach(b => {
+        cachedUniformBills.forEach(b => {
             const dt = b.billDate || "";
             if (dt) dailyTotals[dt] = (dailyTotals[dt] || 0) + (Number(b.total) || 0);
         });
@@ -390,7 +414,7 @@ function renderBooksChart() {
         const sortedDates = Object.keys(dailyTotals).sort();
         const sortedValues = sortedDates.map(d => dailyTotals[d]);
 
-        currentBookChart = new Chart(ctx, {
+        currentUniformChart = new Chart(ctx, {
             type: "line",
             data: {
                 labels: sortedDates.map(d => {
@@ -437,13 +461,13 @@ function renderBooksChart() {
 }
 
 // Re-render chart on dropdown change
-document.getElementById("chartTypeSelect")?.addEventListener("change", renderBooksChart);
+document.getElementById("chartTypeSelect")?.addEventListener("change", renderUniformsChart);
 
-// Hook automatically into your table renderer
+// Hook automatically into the table renderer
 const baseRenderReportTable = renderReportTable;
 renderReportTable = function(bills) {
     baseRenderReportTable(bills);
-    renderBooksChart();
+    renderUniformsChart();
 };
 
 // ==================================================

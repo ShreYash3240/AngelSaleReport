@@ -25,19 +25,16 @@ let bookBillsCache = [];
 // ==================================================
 // AUTHENTICATION & HEADERS
 // ==================================================
-// ==================================================
-// AUTHENTICATION & HEADERS
-// ==================================================
 function handleLogout() {
     sessionStorage.clear();
     localStorage.removeItem("cognito_id_token");
     localStorage.removeItem("selectedBranch");
-    window.location.replace("/login.html"); // Added leading slash
+    window.location.replace("/login.html");
 }
 
 (function enforceAuth() {
     const token = sessionStorage.getItem("cognito_id_token");
-    if (!token) return window.location.replace("/login.html"); // Added leading slash
+    if (!token) return window.location.replace("/login.html");
 
     try {
         const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -46,7 +43,7 @@ function handleLogout() {
 
         if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
             sessionStorage.removeItem("cognito_id_token");
-            return window.location.replace("/login.html"); // Added leading slash
+            return window.location.replace("/login.html");
         }
 
         const emailDisplay = document.getElementById("userEmailDisplay");
@@ -63,7 +60,7 @@ function handleLogout() {
             };
         }
     } catch {
-        window.location.replace("/login.html"); // Added leading slash
+        window.location.replace("/login.html");
     }
 })();
 
@@ -228,7 +225,7 @@ function renderReportTable(bills) {
 }
 
 // ==================================================
-// CHART.JS CLIENT-SIDE ANALYTICS
+// CHART.JS CLIENT-SIDE ANALYTICS (BOOKS)
 // ==================================================
 let currentBookChart = null;
 
