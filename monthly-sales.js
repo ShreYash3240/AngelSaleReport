@@ -12,8 +12,7 @@ const monthlyBranchFilter = document.getElementById("monthlyBranchFilter");
 const exportXlsxBtn = document.getElementById("exportXlsxBtn");
 const monthlySalesBody = document.getElementById("monthlySalesBody");
 const tableTotalsFooter = document.getElementById("tableTotalsFooter");
-const clearMonthBtn = document.getElementById("clearMonthBtn");
-const clearAllDataBtn = document.getElementById("clearAllDataBtn");
+
 
 const XLSX_COLUMNS = [
     "SHIRT", "HALF PANTS", "FULL PANTS", "SKIRT", 
