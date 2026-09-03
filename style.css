@@ -11,6 +11,7 @@ body {
     background: #f8fafc;
     color: #1e293b;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden; /* Prevents unwanted horizontal bounce */
 }
 
 .container {
@@ -202,6 +203,7 @@ body {
 .form-group {
     display: flex;
     flex-direction: column;
+    width: 100%;
 }
 
 .form-group label {
@@ -238,8 +240,8 @@ select:focus {
 
 .bill-info {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
     margin-bottom: 28px;
 }
 
@@ -255,6 +257,8 @@ select:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
     margin-bottom: 14px;
 }
 
@@ -286,8 +290,7 @@ select:focus {
 
 .item-row {
     display: grid;
-    /* Drops from 1.5fr to 1fr, with a smaller 140px baseline */
-    grid-template-columns: minmax(140px, 1fr) 90px 80px 130px 36px;
+    grid-template-columns: minmax(180px, 2fr) 95px 130px 36px;
     gap: 10px;
     align-items: center;
     margin-bottom: 10px;
@@ -421,6 +424,8 @@ button {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
     margin-bottom: 18px;
 }
 
@@ -435,7 +440,9 @@ button {
 }
 
 .table-container {
+    width: 100%;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
 }
@@ -443,7 +450,7 @@ button {
 table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 950px;
+    min-width: 850px;
 }
 
 th, td {
@@ -466,6 +473,7 @@ th {
 td {
     font-size: 13.5px;
     color: #334155;
+    white-space: nowrap;
 }
 
 tbody tr:hover {
@@ -504,13 +512,18 @@ tbody tr:hover {
     flex-wrap: wrap;
 }
 
-.report-controls .form-group {
-    width: 220px;
+.monthly-entry-controls {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
 }
 
 .monthly-summary {
     display: flex;
     gap: 18px;
+    flex-wrap: wrap;
     margin-top: 24px;
 }
 
@@ -519,7 +532,8 @@ tbody tr:hover {
     border: 1px solid #e2e8f0;
     padding: 18px 22px;
     border-radius: 12px;
-    min-width: 210px;
+    min-width: 200px;
+    flex: 1 1 200px;
 }
 
 .summary-box span {
@@ -534,10 +548,6 @@ tbody tr:hover {
     font-size: 22px;
     color: #0f172a;
     font-weight: 700;
-}
-
-.monthly-entry-controls {
-    margin-bottom: 24px;
 }
 
 .monthly-sales-table {
@@ -557,15 +567,6 @@ tbody tr:hover {
     text-align: left;
 }
 
-.monthly-qty {
-    width: 110px;
-    padding: 7px 10px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    font-size: 14px;
-    text-align: center;
-}
-
 .monthly-sales-table tfoot th {
     font-size: 15px;
     font-weight: 700;
@@ -581,55 +582,155 @@ footer {
 }
 
 /* ==================================================
-   RESPONSIVE LAYOUTS
+   RESPONSIVE MEDIA QUERIES (TABLETS & PHONES)
 ================================================== */
 
-@media (max-width: 950px) {
-    .bill-info {
-        grid-template-columns: 1fr 1fr;
+@media (max-width: 900px) {
+    .container {
+        width: 95%;
+        margin: 16px auto;
     }
-    .item-row {
-        grid-template-columns: minmax(160px, 1fr) 100px 140px 40px;
+
+    .bill-info {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
-@media (max-width: 650px) {
+@media (max-width: 680px) {
     .container {
-        width: 94%;
-        margin: 16px auto;
+        width: 100%;
+        padding: 0 10px;
+        margin: 12px auto;
     }
+
     .navbar {
         flex-direction: column;
-        gap: 14px;
         align-items: stretch;
+        gap: 12px;
+        padding: 14px 16px;
     }
+
     .nav-brand {
         justify-content: center;
+        font-size: 14px;
     }
+
     .nav-links {
-        justify-content: center;
-        flex-wrap: wrap;
+        justify-content: space-between;
+        width: 100%;
     }
+
+    .nav-dropbtn,
+    .logout-btn {
+        padding: 8px 12px;
+        font-size: 13px;
+    }
+
+    .card,
+    .header {
+        padding: 16px;
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+
+    .header h1 {
+        font-size: 19px;
+    }
+
     .bill-info {
         grid-template-columns: 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
     }
+
+    /* Hide desktop column headers */
     .item-header-row {
-        display: none;
+        display: none !important;
     }
+
+    /* Override inline JS styles and turn row into an organized card */
     .item-row {
-        grid-template-columns: 1fr;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        grid-template-columns: none !important;
         background: #f8fafc;
         border: 1px solid #e2e8f0;
         padding: 12px;
-        border-radius: 8px;
+        border-radius: 10px;
+        gap: 8px !important;
+        position: relative;
     }
-    .remove-item-btn {
+
+    /* Book / Item Name selector spans the full width */
+    .item-row .item-name {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+
+    /* Uniform PT Size dropdown (if visible) */
+    .item-row .item-size {
+        flex: 1 1 calc(50% - 4px) !important;
+    }
+
+    /* Quantity dropdown */
+    .item-row .item-qty {
+        flex: 1 1 80px !important;
+        max-width: 90px;
+    }
+
+    /* Amount box takes remaining space */
+    .item-row .item-amount {
+        flex: 2 1 110px !important;
+    }
+
+    /* Remove button sits compactly on the bottom line */
+    .item-row .remove-item-btn {
+        flex: 0 0 42px !important;
+        height: 42px !important;
+        width: 42px !important;
+    }
+
+    .bill-total {
+        justify-content: space-between;
+        padding: 12px 14px;
+    }
+
+    .bill-total strong {
+        font-size: 19px;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .save-btn,
+    .clear-btn {
+        width: 100%;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .monthly-entry-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .monthly-entry-controls .form-group,
+    .monthly-entry-controls button {
         width: 100%;
     }
+
     .monthly-summary {
         flex-direction: column;
     }
+
     .summary-box {
         width: 100%;
+        min-width: 0;
+    }
+
+    /* Ensures the table is bounded cleanly inside cards */
+    .table-container {
+        border-radius: 8px;
     }
 }
