@@ -45,10 +45,10 @@ function parseJwt(token) {
 function handleLogout() {
     sessionStorage.clear();
     localStorage.removeItem("cognito_id_token");
-
-    const logoutUrl = `${COGNITO_AUTH_DOMAIN}/logout?client_id=${COGNITO_CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
-    window.location.replace(logoutUrl);
+    localStorage.removeItem("selectedBranch");
+    window.location.replace("login.html");
 }
+
 
 function enforceAuthentication() {
     const hash = window.location.hash.substring(1);
