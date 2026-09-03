@@ -97,6 +97,12 @@ function getItemUnitPrice(itemName) {
 // ==================================================
 // DYNAMIC ROWS & CALCULATIONS
 // ==================================================
+function getAvailableUniformItems() {
+    const gen = gender.value.trim();
+    const specificItem = (gen === "GIRLS") ? "SHIRT & SKIRT" : "SHIRT & PANT";
+    return ["SET", specificItem, "BLAZZER", "SHOES & SOCKS", "ONLY SOCKS", "BELT"];
+}
+
 function createItemRow() {
     const row = document.createElement("div");
     row.className = "item-row";
@@ -104,8 +110,10 @@ function createItemRow() {
     const select = document.createElement("select");
     select.className = "item-name";
     select.required = true;
+    
+    const items = getAvailableUniformItems();
     select.innerHTML = `<option value="">Select Item</option>` + 
-        UNIFORM_ITEMS.map(i => `<option value="${i}">${i}</option>`).join("");
+        items.map(i => `<option value="${i}">${i}</option>`).join("");
 
     const qty = document.createElement("select");
     qty.className = "item-qty";
@@ -130,6 +138,7 @@ function createItemRow() {
     row.append(select, qty, amt, removeBtn);
     return row;
 }
+
 
 function addItemRow() {
     itemsContainer.appendChild(createItemRow());
@@ -317,7 +326,29 @@ todayBranchFilter?.addEventListener("change", () => {
 });
 
 standard?.addEventListener("change", syncAndRecalculateItems);
-gender?.addEventListener("change", syncAndRecalculateItems);
+gender?.addEventListener("change", () => {
+    const rows = itemsContainer.querySelectorAll(".item-row");
+    const items = getAvailableUniformItems();
+    
+    rows.forEach(row => {
+        const select = row.querySelector(".item-name");
+        const prevVal = select.value;
+        
+        select.innerHTML = `<option value="">Select Item</option>` + 
+            items.map(i => `<option value="${i}">${i}</option>`).join("");
+
+        // Auto-switch between Pant and Skirt if already selected
+        if (prevVal === "SHIRT & PANT" && gender.value === "GIRLS") {
+            select.value = "SHIRT & SKIRT";
+        } else if (prevVal === "SHIRT & SKIRT" && gender.value === "BOYS") {
+            select.value = "SHIRT & PANT";
+        } else if (items.includes(prevVal)) {
+            select.value = prevVal;
+        }
+    });
+
+    syncAndRecalculateItems();
+});
 paymentMode?.addEventListener("change", handlePaymentMode);
 addItemBtn?.addEventListener("click", addItemRow);
 clearBtn?.addEventListener("click", clearForm);
