@@ -36,7 +36,7 @@
     <div id="appContainer" style="display: none;">
         <header class="header">
             <h1>Books Department - Monthly Matrix</h1>
-            <p>Monthly Sales Breakdown & Excel Export</p>
+            <p>Monthly Sales Breakdown & Granular Item Export</p>
         </header>
 
         <section class="card">
@@ -75,7 +75,7 @@
         <!-- Books Matrix Table -->
         <section class="card">
             <div class="section-header">
-                <h2>Transactions & Book Sets Matrix</h2>
+                <h2>Transactions & Books Sales Matrix</h2>
             </div>
             <div class="table-container" style="overflow-x: auto;">
                 <table class="monthly-sales-table">
@@ -83,17 +83,23 @@
                         <tr>
                             <th>Bill No.</th>
                             <th>Branch</th>
+                            <th>Std.</th>
+                            <th>Payment</th>
                             <th>Transaction ID</th>
                             <th>Req Date</th>
-                            <th>Amount</th>
+                            <th>Total Amount</th>
                             <th>TEXTBOOKS SET</th>
                             <th>NOTEBOOK SET</th>
                             <th>COMPLETE SET</th>
+                            <th>Individual Items / Units</th>
                         </tr>
                     </thead>
                     <tbody id="monthlySalesBody"></tbody>
                     <tfoot id="tableTotalsFooter"></tfoot>
                 </table>
+                <div id="emptyMessage" class="empty-message" style="display: none; padding: 24px; text-align: center; color: var(--text-muted, #94a3b8);">
+                    No book sales found for this month and branch selection.
+                </div>
             </div>
         </section>
 
@@ -104,6 +110,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="prices.js"></script>
 <script src="books-monthly.js"></script>
 </body>
 </html>

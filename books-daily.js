@@ -24,7 +24,11 @@ const todayBillCount = document.getElementById("todayBillCount");
 const todayTotal = document.getElementById("todayTotal");
 const todayBranchFilter = document.getElementById("todayBranchFilter");
 
-const BOOK_ITEMS = ["TOTAL AMOUNT", "TEXTBOOKS SET", "NOTEBOOK SET"];
+const BUNDLE_OPTIONS = [
+    { key: "TOTAL AMOUNT", label: "COMPLETE BOOK SET (Both Text & Notes)" },
+    { key: "TEXTBOOKS SET", label: "TEXTBOOKS SET ONLY" },
+    { key: "NOTEBOOK SET", label: "NOTEBOOK SET ONLY" }
+];
 
 // ==================================================
 // AUTHENTICATION CHECK & AUDIT HELPERS
@@ -83,33 +87,100 @@ function getAuthHeaders() {
 }
 
 // ==================================================
-// PRICING LOOKUP
+// PRICING LOOKUP (BUNDLES + INDIVIDUAL UNITS)
 // ==================================================
+function getAvailableBookItems(std) {
+    if (!std) return [];
+
+    const items = [];
+
+    // 1. Standard Bundles
+    BUNDLE_OPTIONS.forEach(b => {
+        if (typeof BOOKS_PRICE_MATRIX !== "undefined" && BOOKS_PRICE_MATRIX[std]?.[b.key]) {
+            items.push({ value: b.key, label: b.label, isBundle: true });
+        }
+    });
+
+    // 2. Individual Textbooks & Notebooks
+    if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[std]) {
+        Object.keys(BOOK_ITEMS_BREAKDOWN[std]).forEach(singleBook => {
+            items.push({ value: singleBook, label: singleBook, isBundle: false });
+        });
+    }
+
+    return items;
+}
+
 function getBookUnitPrice(itemName) {
     const std = standard.value.trim();
     if (!std || !itemName) return 0;
-    return typeof BOOKS_PRICE_MATRIX !== "undefined" ? (BOOKS_PRICE_MATRIX[std]?.[itemName] ?? 0) : 0;
+
+    // A. Check in Standard Bundles Matrix
+    if (typeof BOOKS_PRICE_MATRIX !== "undefined" && BOOKS_PRICE_MATRIX[std]?.[itemName] !== undefined) {
+        return BOOKS_PRICE_MATRIX[std][itemName];
+    }
+
+    // B. Check in Granular Breakdown Matrix
+    if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[std]?.[itemName] !== undefined) {
+        return BOOK_ITEMS_BREAKDOWN[std][itemName];
+    }
+
+    return 0;
 }
 
 // ==================================================
 // DYNAMIC ITEM ROWS
 // ==================================================
+function populateItemSelectOptions(selectElement, selectedValue = "") {
+    const std = standard.value.trim();
+    const availableItems = getAvailableBookItems(std);
+
+    if (availableItems.length === 0) {
+        selectElement.innerHTML = `<option value="">Select Standard first</option>`;
+        return;
+    }
+
+    let html = `<option value="">Select Book / Set</option>`;
+    
+    // Group 1: Bundles
+    const bundles = availableItems.filter(i => i.isBundle);
+    if (bundles.length > 0) {
+        html += `<optgroup label="── Full Sets / Bundles ──">`;
+        bundles.forEach(b => {
+            html += `<option value="${escapeHTML(b.value)}">${escapeHTML(b.label)}</option>`;
+        });
+        html += `</optgroup>`;
+    }
+
+    // Group 2: Individual Books
+    const singles = availableItems.filter(i => !i.isBundle);
+    if (singles.length > 0) {
+        html += `<optgroup label="── Individual Textbooks & Notebooks ──">`;
+        singles.forEach(s => {
+            html += `<option value="${escapeHTML(s.value)}">${escapeHTML(s.label)}</option>`;
+        });
+        html += `</optgroup>`;
+    }
+
+    selectElement.innerHTML = html;
+    if (selectedValue) selectElement.value = selectedValue;
+}
+
 function createBookItemRow() {
     const row = document.createElement("div");
     row.className = "item-row";
-    row.style.gridTemplateColumns = "minmax(180px, 1.5fr) 95px 140px 36px";
+    row.style.gridTemplateColumns = "minmax(260px, 2fr) 90px 130px 36px";
 
     const select = document.createElement("select");
     select.className = "item-name";
     select.required = true;
-    select.innerHTML = `<option value="">Select Item</option>` + 
-        BOOK_ITEMS.map(i => `<option value="${i}">${i === "TOTAL AMOUNT" ? "COMPLETE BOOK SET (Both)" : i}</option>`).join("");
+    populateItemSelectOptions(select);
 
     const qty = document.createElement("select");
     qty.className = "item-qty";
     qty.required = true;
     qty.innerHTML = `<option value="">Qty.</option>` + 
-        Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+        Array.from({ length: 30 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
 
     const amt = document.createElement("input");
     amt.type = "number";
@@ -133,12 +204,24 @@ function addBookRow() {
     updateTotal();
 }
 
+function refreshAllDropdownsForStandard() {
+    const rows = itemsContainer.querySelectorAll(".item-row");
+    rows.forEach(row => {
+        const select = row.querySelector(".item-name");
+        const prevVal = select.value;
+        populateItemSelectOptions(select, prevVal);
+    });
+    syncAndRecalculate();
+}
+
 function syncAndRecalculate() {
     const rows = itemsContainer.querySelectorAll(".item-row");
     rows.forEach(row => {
         const itemSelect = row.querySelector(".item-name");
         const qtySelect = row.querySelector(".item-qty");
         const amtInput = row.querySelector(".item-amount");
+
+        if (!itemSelect || !qtySelect || !amtInput) return;
 
         const item = itemSelect.value;
         const unitPrice = getBookUnitPrice(item);
@@ -312,7 +395,7 @@ todayBranchFilter?.addEventListener("change", () => {
     fetchAndDisplayTodayBills();
 });
 
-standard?.addEventListener("change", syncAndRecalculate);
+standard?.addEventListener("change", refreshAllDropdownsForStandard);
 paymentMode?.addEventListener("change", handlePaymentMode);
 addItemBtn?.addEventListener("click", addBookRow);
 clearBtn?.addEventListener("click", clearForm);

@@ -1,4 +1,9 @@
-// prices.js - Angel Group of School Regular Uniform Price Matrix
+// ===================================================================
+// prices.js - Angel Group of Schools Price Matrices
+// Uniforms & Granular Academic Books (2026-2027)
+// ===================================================================
+
+// 1. Regular Uniform Price Matrix
 const UNIFORM_PRICE_MATRIX = {
   "Nursery": {
     "BOYS":  { "SET": 1560, "SHIRT & PANT": 950,  "BLAZZER": 0,    "SHOES & SOCKS": 650,  "ONLY SOCKS": 80, "BELT": 0 },
@@ -78,16 +83,162 @@ const PT_UNIFORM_PRICE_MATRIX = {
   "46": { "PT SHIRT": 550, "PT PANT": 650 }
 };
 
-// Append to prices.js
+// 3. Books Price Matrix - Standard Bundles
 const BOOKS_PRICE_MATRIX = {
-  "I":    { "TEXTBOOKS SET": 3917, "NOTEBOOK SET": 770,  "TOTAL AMOUNT": 4687 },
-  "II":   { "TEXTBOOKS SET": 4062, "NOTEBOOK SET": 770,  "TOTAL AMOUNT": 4832 },
-  "III":  { "TEXTBOOKS SET": 4251, "NOTEBOOK SET": 880,  "TOTAL AMOUNT": 5131 },
-  "IV":   { "TEXTBOOKS SET": 4420, "NOTEBOOK SET": 880,  "TOTAL AMOUNT": 5300 },
-  "V":    { "TEXTBOOKS SET": 4495, "NOTEBOOK SET": 840,  "TOTAL AMOUNT": 5335 },
-  "VI":   { "TEXTBOOKS SET": 5655, "NOTEBOOK SET": 840,  "TOTAL AMOUNT": 6495 },
-  "VII":  { "TEXTBOOKS SET": 5790, "NOTEBOOK SET": 840,  "TOTAL AMOUNT": 6630 },
-  "VIII": { "TEXTBOOKS SET": 5850, "NOTEBOOK SET": 840,  "TOTAL AMOUNT": 6690 },
-  "IX":   { "TEXTBOOKS SET": 2798, "NOTEBOOK SET": 1020, "TOTAL AMOUNT": 3818 },
-  "X":    { "TEXTBOOKS SET": 2263, "NOTEBOOK SET": 1020, "TOTAL AMOUNT": 3283 }
+  "NURSERY": { "TEXTBOOKS SET": 3749, "NOTEBOOK SET": 330,  "TOTAL AMOUNT": 4079 },
+  "JR. KG":  { "TEXTBOOKS SET": 4049, "NOTEBOOK SET": 440,  "TOTAL AMOUNT": 4489 },
+  "SR. KG":  { "TEXTBOOKS SET": 4249, "NOTEBOOK SET": 675,  "TOTAL AMOUNT": 4924 },
+  "I":       { "TEXTBOOKS SET": 3917, "NOTEBOOK SET": 660,  "TOTAL AMOUNT": 4577 },
+  "II":      { "TEXTBOOKS SET": 4062, "NOTEBOOK SET": 660,  "TOTAL AMOUNT": 4722 },
+  "III":     { "TEXTBOOKS SET": 4251, "NOTEBOOK SET": 1115, "TOTAL AMOUNT": 5366 },
+  "IV":      { "TEXTBOOKS SET": 4420, "NOTEBOOK SET": 1280, "TOTAL AMOUNT": 5700 },
+  "V":       { "TEXTBOOKS SET": 4495, "NOTEBOOK SET": 1100, "TOTAL AMOUNT": 5595 },
+  "VI":      { "TEXTBOOKS SET": 5590, "NOTEBOOK SET": 1345, "TOTAL AMOUNT": 6935 },
+  "VII":     { "TEXTBOOKS SET": 5725, "NOTEBOOK SET": 2100, "TOTAL AMOUNT": 7825 },
+  "VIII":    { "TEXTBOOKS SET": 5685, "NOTEBOOK SET": 1935, "TOTAL AMOUNT": 7620 },
+  "IX":      { "TEXTBOOKS SET": 2798, "NOTEBOOK SET": 1020, "TOTAL AMOUNT": 3818 },
+  "X":       { "TEXTBOOKS SET": 2263, "NOTEBOOK SET": 1020, "TOTAL AMOUNT": 3283 }
+};
+
+// 4. Granular Unit Prices (Individual Textbooks & Notebooks per standard)
+const BOOK_ITEMS_BREAKDOWN = {
+  "NURSERY": {
+    "Calyx - Foundational Stage Nursery": 3199,
+    "Magic English Language (Karadi Path)": 550,
+    "Red & Blue Line 200 Pages": 55,
+    "Square Line (Big) 200 Pages": 55,
+    "Square Line (Medium) 200 Pages": 55
+  },
+  "JR. KG": {
+    "Calyx - Foundational Stage LKG": 3499,
+    "Magic English Language (Karadi Path)": 550,
+    "Red & Blue Line 200 Pages": 55,
+    "4 Square Line (Medium) 200 Pages": 55
+  },
+  "SR. KG": {
+    "Calyx - Foundational Stage UKG": 3699,
+    "Magic English Language (Karadi Path)": 550,
+    "Red & Blue Line 200 Pages": 55,
+    "Square Line 200 Pages": 55,
+    "Red & Blue Line 100 Pages": 35,
+    "Square Line 100 Pages": 35,
+    "Double Line 200 Pages": 55
+  },
+  "I": {
+    "Melons (Semester I)": 675,
+    "Melons (Semester II)": 675,
+    "Interactive Grammar & More": 299,
+    "Bansuri (Hindi)": 350,
+    "Shivai (Marathi)": 260,
+    "Computer Project Booklet - 3 in 1": 360,
+    "Artistic (Art & Activity)": 198,
+    "Health Education": 550,
+    "Magic English Language (Karadi Path)": 550,
+    "Red & Blue Line 200 Pages": 55,
+    "Square Line 200 Pages": 55,
+    "Double Line 200 Pages": 55
+  },
+  "II": {
+    "Melons (Semester I)": 695,
+    "Melons (Semester II)": 695,
+    "Interactive Grammar & More": 344,
+    "Bansuri (Hindi)": 390,
+    "Shivai (Marathi)": 270,
+    "Computer Project Booklet - 3 in 1": 370,
+    "Artistic (Art & Activity)": 198,
+    "Health Education": 550,
+    "Magic English Language (Karadi Path)": 550,
+    "Red & Blue Line 200 Pages": 55,
+    "Square Line 200 Pages": 55,
+    "Double Line 200 Pages": 55
+  },
+  "III": {
+    "Melons (Semester I)": 725,
+    "Melons (Semester II)": 725,
+    "Interactive Grammar & More": 379,
+    "Bansuri (Hindi)": 430,
+    "Shivai (Marathi)": 290,
+    "Computer Project Booklet - 3 in 1": 395,
+    "Artistic (Art & Activity)": 207,
+    "Health Education": 550,
+    "Magic English Language (Karadi Path)": 550,
+    "Red & Blue Line 200 Pages": 55,
+    "Square Line 200 Pages": 55,
+    "Double Line 200 Pages": 55,
+    "4 Line Book 100 Pages": 35
+  },
+  "IV": {
+    "Melons (Semester I)": 775,
+    "Melons (Semester II)": 775,
+    "Interactive Grammar & More": 399,
+    "Bansuri (Hindi)": 450,
+    "Shivai (Marathi)": 290,
+    "Computer Project Booklet - 3 in 1": 415,
+    "Artistic (Art & Activity)": 216,
+    "Health Education": 550,
+    "Magic English Language (Karadi Path)": 550,
+    "Red & Blue Line 200 Pages": 55,
+    "Square Line 200 Pages": 55,
+    "Double Line 200 Pages": 55,
+    "4 Line Book 100 Pages": 35
+  },
+  "V": {
+    "Melons (Semester I)": 795,
+    "Melons (Semester II)": 795,
+    "Interactive Grammar & More": 399,
+    "Bansuri (Hindi)": 470,
+    "Shivai (Marathi)": 300,
+    "Computer Project Booklet - 3 in 1": 420,
+    "Artistic (Art & Activity)": 216,
+    "Health Education": 550,
+    "Magic English Language (Karadi Path)": 550,
+    "Single Line 200 Pages": 55
+  },
+  "VI": {
+    "Communicate in English": 679,
+    "Interactive Grammar & More": 424,
+    "Bansuri (Hindi)": 490,
+    "Shivai (Marathi)": 320,
+    "New Direction Mathematics": 595,
+    "New Direction Science": 595,
+    "My Big Book of Social Science": 629,
+    "Computer Project Booklet - 3 in 1": 460,
+    "Artistic (Art & Activity)": 288,
+    "Health Education": 550,
+    "Sangita Marathi Vyakaran": 195,
+    "Vyakran Samiksha Hindi": 365,
+    "Single Line 200 Pages": 55,
+    "Single Line 100 Pages": 35
+  },
+  "VII": {
+    "Communicate in English": 689,
+    "Interactive Grammar & More": 444,
+    "Bansuri (Hindi)": 490,
+    "Shivai (Marathi)": 320,
+    "New Direction Mathematics": 595,
+    "New Direction Science": 595,
+    "My Big Book of Social Science": 699,
+    "Computer Project Booklet - 3 in 1": 465,
+    "Artistic (Art & Activity)": 288,
+    "Health Education": 550,
+    "Sangita Marathi Vyakaran": 215,
+    "Vyakran Samiksha Hindi": 375,
+    "Single Line 200 Pages": 75
+  },
+  "VIII": {
+    "Communicate in English": 699,
+    "Interactive Grammar & More": 444,
+    "Bansuri (Hindi)": 490,
+    "Shivai (Marathi)": 320,
+    "New Direction Mathematics": 595,
+    "New Direction Science": 595,
+    "My Big Book of Social Science": 699,
+    "Computer Project Booklet - 3 in 1": 475,
+    "Artistic (Art & Activity)": 288,
+    "Health Education": 550,
+    "Sangita Marathi Vyakaran": 235,
+    "Vyakran Samiksha Hindi": 295,
+    "Single Line 200 Pages": 75,
+    "Single Line 100 Pages": 45
+  }
 };

@@ -69,6 +69,9 @@
                         <label for="standard">Standard *</label>
                         <select id="standard" required>
                             <option value="">Select Standard</option>
+                            <option value="NURSERY">NURSERY</option>
+                            <option value="JR. KG">JR. KG</option>
+                            <option value="SR. KG">SR. KG</option>
                             <option value="I">I</option>
                             <option value="II">II</option>
                             <option value="III">III</option>
@@ -102,12 +105,12 @@
                     <div class="items-header">
                         <div>
                             <h3>Book Items *</h3>
-                            <p class="items-help">Prices auto-fill according to the selected standard</p>
+                            <p class="items-help">Select bundles or individual books. Unit prices auto-fill based on Standard.</p>
                         </div>
                         <button type="button" id="addItemBtn" class="add-item-btn">+ Add Item</button>
                     </div>
 
-                    <div class="item-row item-header-row" style="grid-template-columns: minmax(180px, 1.5fr) 95px 140px 36px;">
+                    <div class="item-row item-header-row" style="grid-template-columns: minmax(260px, 2fr) 90px 130px 36px;">
                         <div>Book Item *</div>
                         <div>Qty. *</div>
                         <div>Amount (₹) *</div>
