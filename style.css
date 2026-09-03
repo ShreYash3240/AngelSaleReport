@@ -69,8 +69,9 @@ body {
   justify-content: space-between;
   box-shadow: var(--shadow-soft);
   position: relative;
-  overflow: hidden;
+  z-index: 100; /* Keeps navbar above all cards and headers */
 }
+
 
 /* Subtle gold top border inspired by school badge */
 .navbar::before {
@@ -144,21 +145,23 @@ body {
 .dropdown-menu {
   display: none;
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   right: 0;
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(16px);
+  background: #ffffff;
   min-width: 180px;
-  border-radius: 14px;
-  box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.12);
-  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  border: 1px solid #cbd5e1;
   padding: 6px;
-  z-index: 1000;
+  z-index: 9999; /* Always renders on top of everything */
 }
 
-.nav-dropdown:hover .dropdown-menu {
+/* Open on hover, on focus, or when tapped on mobile */
+.nav-dropdown:hover .dropdown-menu,
+.nav-dropdown:focus-within .dropdown-menu {
   display: block;
 }
+
 
 .dropdown-item {
   display: block;
