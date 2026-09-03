@@ -8,7 +8,6 @@
     <link rel="icon" type="image/png" sizes="32x32" href="school logo.png" />
 </head>
 <body>
-
     <div class="container">
         <header class="navbar">
             <div class="nav-brand">
@@ -17,9 +16,7 @@
 
             <nav class="nav-links">
                 <div class="nav-dropdown active">
-                    <button type="button" class="nav-dropbtn">
-                        Uniform ▾
-                    </button>
+                    <button type="button" class="nav-dropbtn">Uniform ▾</button>
                     <div class="dropdown-menu">
                         <a href="index.html" class="dropdown-item">Daily Sales</a>
                         <a href="monthly-sales.html" class="dropdown-item active">Monthly Report</a>
@@ -27,9 +24,7 @@
                 </div>
 
                 <div class="nav-dropdown">
-                    <button type="button" class="nav-dropbtn">
-                        Books ▾
-                    </button>
+                    <button type="button" class="nav-dropbtn">Books ▾</button>
                     <div class="dropdown-menu">
                         <a href="books-daily.html" class="dropdown-item">Daily Sales</a>
                         <a href="books-monthly.html" class="dropdown-item">Monthly Report</a>
@@ -41,7 +36,6 @@
         </header>
 
         <div id="appContainer" style="display: none;">
-            
             <header class="header">
                 <h1>Monthly Sales Matrix</h1>
                 <p>Auto-generated from entered daily bills matching standard reporting templates</p>
@@ -67,22 +61,8 @@
                         </select>
                     </div>
 
-                    <button
-                        type="button"
-                        id="viewMonthBtn"
-                        class="secondary-btn"
-                    >
-                        Filter Report
-                    </button>
-
-                    <button
-                        type="button"
-                        id="exportXlsxBtn"
-                        class="save-btn"
-                        style="background-color: #16a34a; color: white;"
-                    >
-                        Export Excel (.xlsx)
-                    </button>
+                    <button type="button" id="viewMonthBtn" class="secondary-btn">Filter Report</button>
+                    <button type="button" id="exportXlsxBtn" class="save-btn" style="background-color: #16a34a; color: white;">Export Excel (.xlsx)</button>
                 </div>
 
                 <div class="monthly-summary" style="margin-top: 24px; display: flex; gap: 18px; flex-wrap: wrap;">
@@ -119,17 +99,14 @@
                                 <th>SKIRT</th>
                                 <th>SHOES</th>
                                 <th>SOCKS</th>
-                                <th>BLEZZER</th>
+                                <th>BLAZZER</th>
+                                <th>BELT</th>
                                 <th>PT SHIRT</th>
-                                <th>PT PANTS</th>
+                                <th>PT PANT</th>
                             </tr>
                         </thead>
-
-                        <tbody id="monthlySalesBody">
-                            </tbody>
-
-                        <tfoot id="tableTotalsFooter">
-                            </tfoot>
+                        <tbody id="monthlySalesBody"></tbody>
+                        <tfoot id="tableTotalsFooter"></tfoot>
                     </table>
                 </div>
             </section>
@@ -140,18 +117,7 @@
         </footer>
     </div>
 
-    <!-- 1. SheetJS Library for XLSX download -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-    <!-- 2. Auth check and monthly script -->
     <script src="monthly-sales.js"></script>
-
-    <script>
-        const exportBtn = document.getElementById("exportXlsxBtn");
-        const legacyExportBtn = document.getElementById("exportBtn");
-        if (!legacyExportBtn && exportBtn) {
-            exportBtn.setAttribute("data-alias", "exportBtn");
-        }
-    </script>
 </body>
 </html>

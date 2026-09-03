@@ -4,13 +4,10 @@
 
 const API_BASE_URL = "https://myen97dfp7.execute-api.ap-south-1.amazonaws.com";
 
-// 1. Standalone Authentication Check
+// Standalone Authentication Check
 (function checkAuth() {
     const token = sessionStorage.getItem("cognito_id_token");
-    if (!token) {
-        window.location.replace("login.html");
-        return;
-    }
+    if (!token) return window.location.replace("login.html");
 
     try {
         const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -19,8 +16,7 @@ const API_BASE_URL = "https://myen97dfp7.execute-api.ap-south-1.amazonaws.com";
 
         if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
             sessionStorage.removeItem("cognito_id_token");
-            window.location.replace("login.html");
-            return;
+            return window.location.replace("login.html");
         }
 
         const emailDisplay = document.getElementById("userEmailDisplay");
@@ -51,18 +47,19 @@ const tableTotalsFooter = document.getElementById("tableTotalsFooter");
 const monthlyBillCount = document.getElementById("monthlyBillCount");
 const monthlyTotal = document.getElementById("monthlyTotal");
 
+// Individual item columns
 const XLSX_COLUMNS = [
-    "SHIRT & PANT", "SHIRT & SKIRT", "BLAZZER", 
-    "SHOES & SOCKS", "ONLY SOCKS", "BELT", "PT SHIRT", "PT PANT"
+    "SHIRT", "HALF PANTS", "FULL PANTS", "SKIRT", 
+    "SHOES", "SOCKS", "BLAZZER", "BELT", "PT SHIRT", "PT PANT"
 ];
 
-// Set default month to current YYYY-MM
+// Default month setup
 const today = new Date();
 if (salesMonth && !salesMonth.value) {
     salesMonth.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// Restore saved branch
+// Restore branch
 if (monthlyBranchFilter) {
     const savedBranch = localStorage.getItem("selectedBranch");
     if (savedBranch) monthlyBranchFilter.value = savedBranch;
@@ -79,25 +76,71 @@ function formatToExcelDate(dateStr) {
     return `${day}-${months[monthIndex] || parts[1]}-${year}`;
 }
 
+// Standard check for junior boys wearing Half Pants vs Full Pants
+function isJuniorBoyStandard(std) {
+    const juniors = ["NURSERY", "JR. KG.", "SR. KG.", "LKG", "UKG", "I", "II", "III", "IV", "V", "VI", "1ST", "2ND", "3RD", "4TH", "5TH", "6TH"];
+    return juniors.includes(String(std || "").trim().toUpperCase());
+}
+
+// Expand grouped uniform items into separate individual items
 function expandBillItems(bill) {
     const expanded = {};
     XLSX_COLUMNS.forEach(col => expanded[col] = 0);
+
+    const isGirl = String(bill.gender || "").trim().toUpperCase().startsWith("G");
+    const isJuniorBoy = isJuniorBoyStandard(bill.standard);
 
     (bill.items || []).forEach(item => {
         let name = (item.name || "").trim().toUpperCase();
         const qty = Number(item.quantity) || 0;
         if (qty <= 0) return;
 
+        // 1. SET / UNIFORM SET
         if (name === "SET" || name === "UNIFORM SET") {
-            const isGirl = (bill.gender || "").toUpperCase() === "GIRLS" || (bill.gender || "").toUpperCase() === "GIRL";
+            expanded["SHIRT"] += qty;
             if (isGirl) {
-                expanded["SHIRT & SKIRT"] += qty;
+                expanded["SKIRT"] += qty;
+            } else if (isJuniorBoy) {
+                expanded["HALF PANTS"] += qty;
             } else {
-                expanded["SHIRT & PANT"] += qty;
+                expanded["FULL PANTS"] += qty;
             }
-            expanded["SHOES & SOCKS"] += qty;
-        } else if (expanded.hasOwnProperty(name)) {
-            expanded[name] += qty;
+            expanded["SHOES"] += qty;
+            expanded["SOCKS"] += qty;
+        } 
+        // 2. SHIRT & PANT
+        else if (name === "SHIRT & PANT" || name === "SHIRT, PANT") {
+            expanded["SHIRT"] += qty;
+            if (isJuniorBoy) {
+                expanded["HALF PANTS"] += qty;
+            } else {
+                expanded["FULL PANTS"] += qty;
+            }
+        } 
+        // 3. SHIRT & SKIRT
+        else if (name === "SHIRT & SKIRT" || name === "SHIRT, SKIRT") {
+            expanded["SHIRT"] += qty;
+            expanded["SKIRT"] += qty;
+        } 
+        // 4. SHOES & SOCKS
+        else if (name === "SHOES & SOCKS" || name === "SHOES, SOCKS") {
+            expanded["SHOES"] += qty;
+            expanded["SOCKS"] += qty;
+        } 
+        // 5. ONLY SOCKS
+        else if (name === "ONLY SOCKS") {
+            expanded["SOCKS"] += qty;
+        } 
+        // 6. Direct Matches (BLAZZER, BELT, PT SHIRT, PT PANT, etc.)
+        else {
+            let normalized = name.replace(/-/g, " ");
+            if (normalized === "BLEZZER") normalized = "BLAZZER";
+            if (normalized === "PT SHIRTS") normalized = "PT SHIRT";
+            if (normalized === "PT PANTS") normalized = "PT PANT";
+
+            if (expanded.hasOwnProperty(normalized)) {
+                expanded[normalized] += qty;
+            }
         }
     });
 
@@ -110,7 +153,6 @@ async function getPivotedMatrixData() {
     const selectedMonth = salesMonth ? salesMonth.value : "";
     const selectedBranch = monthlyBranchFilter ? monthlyBranchFilter.value : "All";
 
-    // Fallback: If department query returns empty, query without department to support legacy records
     let url = `${API_BASE_URL}/bills?month=${selectedMonth}`;
     if (selectedBranch !== "All") {
         url += `&branch=${encodeURIComponent(selectedBranch)}`;
@@ -118,10 +160,9 @@ async function getPivotedMatrixData() {
 
     try {
         const response = await fetch(url);
-        if (!response.ok) throw new Error("Failed to fetch bills from server");
+        if (!response.ok) throw new Error("Failed to load bills from server.");
         let bills = await response.json();
 
-        // Filter for Uniform records only
         bills = bills.filter(b => !b.department || b.department === "Uniform");
 
         cachedMatrixRows = bills.map(bill => {
@@ -152,7 +193,7 @@ async function getPivotedMatrixData() {
 async function displayMonthlySales() {
     if (!monthlySalesBody) return;
 
-    monthlySalesBody.innerHTML = `<tr><td colspan="14" style="text-align:center; padding: 24px; color: #64748b;">Loading records from cloud...</td></tr>`;
+    monthlySalesBody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding: 24px; color: #64748b;">Loading records from cloud...</td></tr>`;
     if (tableTotalsFooter) tableTotalsFooter.innerHTML = "";
 
     const rows = await getPivotedMatrixData();
@@ -161,7 +202,7 @@ async function displayMonthlySales() {
     if (rows.length === 0) {
         monthlySalesBody.innerHTML = `
             <tr>
-                <td colspan="14" style="text-align:center; padding: 30px; color: #94a3b8;">
+                <td colspan="16" style="text-align:center; padding: 30px; color: #94a3b8;">
                     No uniform bills recorded for ${salesMonth ? salesMonth.value : "this period"}.
                 </td>
             </tr>
@@ -219,7 +260,7 @@ function handleExcelExport() {
     }
 
     if (typeof XLSX === "undefined") {
-        alert("Excel export library is still loading or unavailable. Please check your network.");
+        alert("Excel export library is not loaded. Please check your network.");
         return;
     }
 
