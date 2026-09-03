@@ -27,10 +27,8 @@ const todayBranchFilter = document.getElementById("todayBranchFilter");
 const BOOK_ITEMS = ["TOTAL AMOUNT", "TEXTBOOKS SET", "NOTEBOOK SET"];
 
 // ==================================================
-// AUTHENTICATION CHECK
+// AUTHENTICATION CHECK & AUDIT HELPERS
 // ==================================================
-// Auth Config
-
 const COGNITO_AUTH_DOMAIN = "https://school-sales-app-auth.auth.ap-south-1.amazoncognito.com";
 const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
 const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
@@ -75,7 +73,7 @@ function enforceAuth() {
 }
 enforceAuth();
 
-// Header helper for all fetch calls in books-daily.js
+// Header helper: Passes Cognito JWT to Lambda for server-side CloudWatch audit logging
 function getAuthHeaders() {
     const token = sessionStorage.getItem("cognito_id_token");
     return {
@@ -90,7 +88,7 @@ function getAuthHeaders() {
 function getBookUnitPrice(itemName) {
     const std = standard.value.trim();
     if (!std || !itemName) return 0;
-    return BOOKS_PRICE_MATRIX[std]?.[itemName] ?? 0;
+    return typeof BOOKS_PRICE_MATRIX !== "undefined" ? (BOOKS_PRICE_MATRIX[std]?.[itemName] ?? 0) : 0;
 }
 
 // ==================================================
@@ -196,7 +194,9 @@ function handlePaymentMode() {
 
 async function setNextBillNumber() {
     try {
-        const res = await fetch(`${API_BASE_URL}/bills?department=Books`);
+        const res = await fetch(`${API_BASE_URL}/bills?department=Books`, {
+            headers: getAuthHeaders()
+        });
         if (!res.ok) throw new Error();
         const bills = await res.json();
         const max = bills.reduce((m, b) => Math.max(m, parseInt(b.billNo, 10) || 0), 0);
@@ -228,7 +228,9 @@ async function fetchAndDisplayTodayBills() {
     if (filter !== "All") url += `&branch=${encodeURIComponent(filter)}`;
 
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: getAuthHeaders()
+        });
         if (!res.ok) throw new Error();
         const bills = await res.json();
 
@@ -277,13 +279,19 @@ async function fetchAndDisplayTodayBills() {
 async function deleteBill(bBranch, bDate, bNo) {
     if (!confirm(`Delete Book Bill #${bNo}?`)) return;
     try {
-        const res = await fetch(`${API_BASE_URL}/bills?department=Books&branch=${encodeURIComponent(bBranch)}&billDate=${bDate}&billNo=${bNo}`, { method: "DELETE" });
-        if (!res.ok) throw new Error();
+        const res = await fetch(`${API_BASE_URL}/bills?department=Books&branch=${encodeURIComponent(bBranch)}&billDate=${bDate}&billNo=${bNo}`, { 
+            method: "DELETE",
+            headers: getAuthHeaders()
+        });
+        
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Delete failed");
+
         alert(`Bill #${bNo} deleted.`);
         fetchAndDisplayTodayBills();
         setNextBillNumber();
-    } catch {
-        alert("Delete failed.");
+    } catch (err) {
+        alert("Delete failed: " + (err.message || "Unknown error"));
     }
 }
 
@@ -373,7 +381,7 @@ bookBillForm?.addEventListener("submit", async (e) => {
     try {
         const res = await fetch(`${API_BASE_URL}/bills`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: getAuthHeaders(),
             body: JSON.stringify(payload)
         });
         const data = await res.json();
