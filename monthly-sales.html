@@ -10,14 +10,12 @@
 <body>
 
     <div class="container">
-        <!-- Shared Modern Navbar (Uniform active) -->
         <header class="navbar">
             <div class="nav-brand">
                 👋 Welcome, <span id="userEmailDisplay" class="welcome-user">Accountant</span>
             </div>
 
             <nav class="nav-links">
-                <!-- Uniform Dropdown -->
                 <div class="nav-dropdown active">
                     <button type="button" class="nav-dropbtn">
                         Uniform ▾
@@ -28,7 +26,6 @@
                     </div>
                 </div>
 
-                <!-- Books Dropdown -->
                 <div class="nav-dropdown">
                     <button type="button" class="nav-dropbtn">
                         Books ▾
@@ -39,23 +36,19 @@
                     </div>
                 </div>
 
-                <!-- Logout Button -->
                 <button id="authBtn" type="button" class="logout-btn">Logout</button>
             </nav>
         </header>
 
-        <!-- Main Content (Hidden until authenticated by app.js) -->
         <div id="appContainer" style="display: none;">
             
-            <!-- Page Header Card -->
             <header class="header">
                 <h1>Monthly Sales Matrix</h1>
-                <p>Auto-generated</p>
+                <p>Auto-generated from entered daily bills matching standard reporting templates</p>
             </header>
 
-            <!-- Filter & Action Controls Card -->
             <section class="card">
-                <h2>Select Report Period</h2>
+                <h2>Report Parameters & Summary</h2>
 
                 <div class="monthly-entry-controls" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
                     <div class="form-group" style="min-width: 180px;">
@@ -76,16 +69,35 @@
 
                     <button
                         type="button"
+                        id="viewMonthBtn"
+                        class="secondary-btn"
+                    >
+                        Filter Report
+                    </button>
+
+                    <button
+                        type="button"
                         id="exportXlsxBtn"
                         class="save-btn"
                         style="background-color: #16a34a; color: white;"
                     >
-                        Download as Excel (.xlsx)
+                        Export Excel (.xlsx)
                     </button>
+                </div>
+
+                <div class="monthly-summary" style="margin-top: 24px; display: flex; gap: 18px; flex-wrap: wrap;">
+                    <div class="summary-box">
+                        <span>Total Bills Issued</span>
+                        <strong id="monthlyBillCount">0</strong>
+                    </div>
+
+                    <div class="summary-box">
+                        <span>Total Revenue</span>
+                        <strong id="monthlyTotal">₹0.00</strong>
+                    </div>
                 </div>
             </section>
 
-            <!-- Monthly Transaction Matrix View -->
             <section class="card">
                 <div class="section-header">
                     <h2>Transactions & Item Matrix</h2>
@@ -114,25 +126,29 @@
                         </thead>
 
                         <tbody id="monthlySalesBody">
-                            <!-- Populated dynamically by monthly-sales.js -->
-                        </tbody>
+                            </tbody>
 
                         <tfoot id="tableTotalsFooter">
-                            <!-- Populated dynamically by monthly-sales.js -->
-                        </tfoot>
+                            </tfoot>
                     </table>
                 </div>
             </section>
         </div>
 
-        <!-- Footer -->
         <footer>
             <p>© 2026 School Sales Management System • Authenticated User Session</p>
         </footer>
     </div>
 
-    <!-- Scripts: app.js handles auth check; monthly-sales.js populates matrix -->
     <script src="app.js"></script>
     <script src="monthly-sales.js"></script>
+
+    <script>
+        const exportBtn = document.getElementById("exportXlsxBtn");
+        const legacyExportBtn = document.getElementById("exportBtn");
+        if (!legacyExportBtn && exportBtn) {
+            exportBtn.setAttribute("data-alias", "exportBtn");
+        }
+    </script>
 </body>
 </html>
