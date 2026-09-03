@@ -234,7 +234,7 @@ function renderBooksChart() {
     const chartTypeSelect = document.getElementById("chartTypeSelect");
     if (!canvas || !window.Chart) return;
 
-    // Destroy existing chart instance before creating a new one
+    // Clear any previous chart instance to avoid overlapping render bugs
     if (currentBookChart) {
         currentBookChart.destroy();
         currentBookChart = null;
@@ -283,14 +283,150 @@ function renderBooksChart() {
                         ticks: { callback: v => "₹" + Number(v).toLocaleString("en-IN") },
                         grid: { color: "#f1f5f9" }
                     },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+    } else if (type === "bundlePie") {
+        // Categorize into Complete Sets, Text Sets, Notebook Sets, and Loose Books
+        const bundleCounts = {
+            "Complete Sets": 0,
+            "Textbook Sets": 0,
+            "Notebook Sets": 0,
+            "Loose / Individual": 0
+        };
+
+        bookBillsCache.forEach(b => {
+            (b.items || []).forEach(i => {
+                const name = (i.name || "").trim().toUpperCase();
+                const qty = Number(i.quantity) || 0;
+                if (qty <= 0) return;
+
+                if (name === "TOTAL AMOUNT" || name === "COMPLETE SET" || name === "FULL SET") {
+                    bundleCounts["Complete Sets"] += qty;
+                } else if (name === "TEXTBOOKS SET" || name === "TEXTBOOK SET") {
+                    bundleCounts["Textbook Sets"] += qty;
+                } else if (name === "NOTEBOOK SET" || name === "NOTEBOOKS SET") {
+                    bundleCounts["Notebook Sets"] += qty;
+                } else {
+                    bundleCounts["Loose / Individual"] += qty;
+                }
+            });
+        });
+
+        const activeLabels = [];
+        const activeData = [];
+        const palette = ["#2563eb", "#059669", "#d97706", "#7c3aed"];
+
+        Object.keys(bundleCounts).forEach(key => {
+            if (bundleCounts[key] > 0) {
+                activeLabels.push(key);
+                activeData.push(bundleCounts[key]);
+            }
+        });
+
+        currentBookChart = new Chart(ctx, {
+            type: "pie",
+            data: {
+                labels: activeLabels,
+                datasets: [{
+                    data: activeData,
+                    backgroundColor: palette.slice(0, activeLabels.length),
+                    borderWidth: 2,
+                    borderColor: "#ffffff"
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom",
+                        labels: { boxWidth: 14, padding: 12, font: { size: 11, weight: "bold" } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.label}: ${ctx.raw} units`
+                        }
+                    }
+                }
+            }
+        });
+
+    } else if (type === "topBooks") {
+        // Aggregate only loose / individual textbook and notebook titles (omit bundle markers)
+        const itemCounts = {};
+
+        bookBillsCache.forEach(b => {
+            (b.items || []).forEach(i => {
+                const name = (i.name || "").trim();
+                const upper = name.toUpperCase();
+                const qty = Number(i.quantity) || 0;
+
+                if (
+                    upper === "TOTAL AMOUNT" || 
+                    upper.includes("TEXTBOOK SET") || 
+                    upper.includes("TEXTBOOKS SET") || 
+                    upper.includes("NOTEBOOK SET") ||
+                    upper.includes("COMPLETE SET")
+                ) {
+                    return; // Skip bundle markers
+                }
+
+                if (name && qty > 0) {
+                    itemCounts[name] = (itemCounts[name] || 0) + qty;
+                }
+            });
+        });
+
+        // Sort descending and take top 8
+        const sortedItems = Object.entries(itemCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8);
+
+        const labels = sortedItems.map(item => item[0]);
+        const counts = sortedItems.map(item => item[1]);
+
+        currentBookChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels.length > 0 ? labels : ["No Loose Books Sold"],
+                datasets: [{
+                    label: "Quantity Sold",
+                    data: counts.length > 0 ? counts : [0],
+                    backgroundColor: "#059669",
+                    hoverBackgroundColor: "#047857",
+                    borderRadius: 6,
+                    maxBarThickness: 45
+                }]
+            },
+            options: {
+                indexAxis: "y", // Horizontal layout for clean title readability
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` Quantity: ${ctx.raw} sold`
+                        }
+                    }
+                },
+                scales: {
                     x: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 },
+                        grid: { color: "#f1f5f9" }
+                    },
+                    y: {
                         grid: { display: false }
                     }
                 }
             }
         });
 
-    } else if (type === "pie") {
+    } else if (type === "paymentPie") {
         // Aggregate Cash vs Online collection
         const payTotals = { Cash: 0, "Online / UPI": 0 };
         bookBillsCache.forEach(b => {
@@ -324,7 +460,7 @@ function renderBooksChart() {
         });
 
     } else if (type === "line") {
-        // Daily timeline trend
+        // Daily collection trend
         const dailyTotals = {};
         bookBillsCache.forEach(b => {
             const dt = b.billDate || "";
@@ -371,9 +507,7 @@ function renderBooksChart() {
                         ticks: { callback: v => "₹" + Number(v).toLocaleString("en-IN") },
                         grid: { color: "#f1f5f9" }
                     },
-                    x: {
-                        grid: { display: false }
-                    }
+                    x: { grid: { display: false } }
                 }
             }
         });
