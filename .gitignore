@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# OS and Editor metadata
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Environment / Secrets
+.env
+.env.local
+*.pem
+
+# Local build / exports
+dist/
+*.xlsx
