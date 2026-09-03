@@ -47,21 +47,19 @@
             </div>
         </header>
 
-        <!-- Filters & Range Controls -->
-        <section class="card">
-            <h2>Report Filters</h2>
+                    <!-- Filters & Range Controls -->
             <div class="report-controls">
-                <div class="form-group" style="max-width: 170px;">
+                <div class="form-group">
                     <label for="reportFromDate">From Date</label>
                     <input type="date" id="reportFromDate" />
                 </div>
 
-                <div class="form-group" style="max-width: 170px;">
+                <div class="form-group">
                     <label for="reportToDate">To Date</label>
                     <input type="date" id="reportToDate" />
                 </div>
 
-                <div class="form-group" style="max-width: 180px;">
+                <div class="form-group">
                     <label for="reportBranch">Branch</label>
                     <select id="reportBranch">
                         <option value="All">All Branches</option>
@@ -72,13 +70,14 @@
                     </select>
                 </div>
 
-                <div style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
-                    <button type="button" id="loadReportBtn" class="secondary-btn" style="height: 44px;">Generate Report</button>
-                    <button type="button" id="thisMonthBtn" class="clear-btn" style="height: 44px;">This Month</button>
-                    <button type="button" id="lastMonthBtn" class="clear-btn" style="height: 44px;">Last Month</button>
-                    <button type="button" id="exportExcelBtn" class="save-btn" style="height: 44px;">📥 Export Excel</button>
+                <div class="report-buttons">
+                    <button type="button" id="loadReportBtn" class="secondary-btn">Generate Report</button>
+                    <button type="button" id="thisMonthBtn" class="clear-btn">This Month</button>
+                    <button type="button" id="lastMonthBtn" class="clear-btn">Last Month</button>
+                    <button type="button" id="exportExcelBtn" class="save-btn">📥 Export Excel</button>
                 </div>
             </div>
+
 
             <!-- Summary KPI Cards -->
             <div class="monthly-summary">

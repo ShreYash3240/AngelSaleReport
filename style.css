@@ -13,12 +13,11 @@
 
   /* Neutrals & Surfaces */
   --bg-page: #f8fafc;
-  --surface: rgba(255, 255, 255, 0.92);
+  --surface: rgba(255, 255, 255, 0.95);
   --surface-border: #e2e8f0;
   --text-main: #0f172a;
   --text-muted: #64748b;
   --shadow-soft: 0 4px 16px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
-  --shadow-lift: 0 8px 24px -4px rgba(29, 78, 216, 0.12);
   --radius-card: 18px;
   --radius-input: 10px;
 }
@@ -32,7 +31,6 @@
 body {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   background-color: var(--bg-page);
-  /* Subtle school graph-notebook paper pattern */
   background-image: 
     radial-gradient(circle at 10% 10%, rgba(254, 243, 199, 0.45) 0%, transparent 40%),
     radial-gradient(circle at 90% 90%, rgba(219, 234, 254, 0.5) 0%, transparent 40%),
@@ -53,9 +51,8 @@ body {
 }
 
 /* ==================================================
-   1. NAVIGATION BAR (School Shield & Glass Look)
+   1. NAVIGATION BAR
 ================================================== */
-
 .navbar {
   background: var(--surface);
   backdrop-filter: blur(14px);
@@ -69,11 +66,9 @@ body {
   justify-content: space-between;
   box-shadow: var(--shadow-soft);
   position: relative;
-  z-index: 100; /* Keeps navbar above all cards and headers */
+  z-index: 100;
 }
 
-
-/* Subtle gold top border inspired by school badge */
 .navbar::before {
   content: "";
   position: absolute;
@@ -82,6 +77,8 @@ body {
   right: 0;
   height: 3px;
   background: linear-gradient(90deg, #1d4ed8 0%, #f59e0b 50%, #ef4444 100%);
+  border-top-left-radius: var(--radius-card);
+  border-top-right-radius: var(--radius-card);
 }
 
 .nav-brand {
@@ -153,15 +150,13 @@ body {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
   border: 1px solid #cbd5e1;
   padding: 6px;
-  z-index: 9999; /* Always renders on top of everything */
+  z-index: 9999;
 }
 
-/* Open on hover, on focus, or when tapped on mobile */
 .nav-dropdown:hover .dropdown-menu,
 .nav-dropdown:focus-within .dropdown-menu {
   display: block;
 }
-
 
 .dropdown-item {
   display: block;
@@ -210,7 +205,6 @@ body {
 /* ==================================================
    2. CARDS & HEADERS
 ================================================== */
-
 .card {
   background: var(--surface);
   backdrop-filter: blur(12px);
@@ -290,9 +284,8 @@ body {
 }
 
 /* ==================================================
-   3. FORM INPUTS & FIELDSETS
+   3. FORM INPUTS & SHARED FIELDS
 ================================================== */
-
 .form-group {
   display: flex;
   flex-direction: column;
@@ -300,22 +293,22 @@ body {
 }
 
 .form-group label {
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: 0.78rem;
+  font-weight: 700;
   color: #475569;
   margin-bottom: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
 input,
 select {
   width: 100%;
-  height: 44px;
-  padding: 8px 14px;
+  height: 42px;
+  padding: 8px 12px;
   border: 1.5px solid #cbd5e1;
   border-radius: var(--radius-input);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   color: #0f172a;
   background: #ffffff;
   font-family: inherit;
@@ -330,20 +323,123 @@ select:focus {
   background-color: #ffffff;
 }
 
-/* ==================================================
-   4. BILL INFORMATION GRID
-================================================== */
+button {
+  border: none;
+  border-radius: var(--radius-input);
+  padding: 10px 18px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
 
+/* ==================================================
+   4. REPORT CONTROLS TOOLBAR (SOLVES THE SCREEN ISSUE)
+================================================== */
+.report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  margin-bottom: 22px;
+}
+
+.report-controls .form-group {
+  flex: 1 1 180px;
+  min-width: 160px;
+  max-width: 220px;
+}
+
+.report-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.secondary-btn {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.secondary-btn:hover {
+  background: var(--crest-blue);
+  transform: translateY(-1px);
+}
+
+.clear-btn {
+  background: #ffffff;
+  color: #475569;
+  border: 1.5px solid #cbd5e1;
+}
+
+.clear-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.save-btn {
+  background: var(--crest-green);
+  color: #ffffff;
+}
+
+.save-btn:hover {
+  background: var(--crest-green-hover);
+  transform: translateY(-1px);
+}
+
+/* ==================================================
+   5. SUMMARY KPI CARDS (REPORT PAGES)
+================================================== */
+.monthly-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.summary-box {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  padding: 18px 22px;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.summary-box span {
+  display: block;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
+
+.summary-box strong {
+  font-size: 1.6rem;
+  color: var(--crest-blue);
+  font-weight: 800;
+}
+
+/* ==================================================
+   6. BILL ENTRY GRID & ITEM ROWS (DAILY PAGES)
+================================================== */
 .bill-info {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 16px;
   margin-bottom: 26px;
 }
-
-/* ==================================================
-   5. ITEM ROWS (Interactive & Compact)
-================================================== */
 
 .items-section {
   margin-top: 14px;
@@ -381,13 +477,10 @@ select:focus {
   border-radius: 10px;
   font-size: 0.85rem;
   font-weight: 600;
-  transition: all 0.2s ease;
 }
 
 .add-item-btn:hover {
   background: var(--crest-blue);
-  transform: translateY(-1.5px);
-  box-shadow: 0 3px 8px rgba(29, 78, 216, 0.25);
 }
 
 .item-row {
@@ -427,19 +520,12 @@ select:focus {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
 }
 
 .remove-item-btn:hover {
   background: var(--crest-red);
   color: #ffffff;
-  border-color: var(--crest-red);
-  transform: scale(1.05);
 }
-
-/* ==================================================
-   6. TOTAL & ACTION BUTTONS
-================================================== */
 
 .bill-total {
   margin-top: 20px;
@@ -458,24 +544,12 @@ select:focus {
   font-weight: 700;
   color: #334155;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 .bill-total strong {
   font-size: 1.55rem;
   color: var(--crest-blue);
   font-weight: 800;
-}
-
-button {
-  border: none;
-  border-radius: 10px;
-  padding: 10px 20px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 .form-actions {
@@ -485,42 +559,9 @@ button {
   margin-top: 20px;
 }
 
-.save-btn {
-  background: var(--crest-green);
-  color: #ffffff;
-}
-
-.save-btn:hover {
-  background: var(--crest-green-hover);
-  transform: translateY(-1.5px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
-}
-
-.clear-btn {
-  background: #f1f5f9;
-  color: #475569;
-  border: 1px solid #cbd5e1;
-}
-
-.clear-btn:hover {
-  background: #e2e8f0;
-  color: #0f172a;
-}
-
-.secondary-btn {
-  background: #0f172a;
-  color: #ffffff;
-}
-
-.secondary-btn:hover {
-  background: var(--crest-blue);
-  transform: translateY(-1.5px);
-}
-
 /* ==================================================
-   7. TABLES & SUMMARIES
+   7. DATA TABLES
 ================================================== */
-
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -531,8 +572,8 @@ button {
 }
 
 .today-summary {
-  font-size: 0.9rem;
-  color: #64748b;
+  font-size: 0.88rem;
+  color: #475569;
   background: #f8fafc;
   padding: 6px 14px;
   border-radius: 8px;
@@ -540,7 +581,6 @@ button {
 }
 
 .today-summary strong {
-  font-size: 1rem;
   color: var(--crest-blue);
 }
 
@@ -572,33 +612,16 @@ th {
   font-weight: 700;
   color: #475569;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
   white-space: nowrap;
 }
 
 td {
   font-size: 0.88rem;
   color: #334155;
-  white-space: nowrap;
 }
 
 tbody tr:hover {
   background-color: #f8fafc;
-}
-
-.delete-btn {
-  background: var(--crest-red-soft);
-  color: var(--crest-red);
-  border: 1px solid #fecaca;
-  padding: 6px 12px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  border-radius: 6px;
-}
-
-.delete-btn:hover {
-  background: var(--crest-red);
-  color: #ffffff;
 }
 
 .empty-message {
@@ -606,42 +629,6 @@ tbody tr:hover {
   padding: 36px;
   color: #94a3b8;
   font-size: 0.9rem;
-}
-
-/* ==================================================
-   8. MONTHLY SUMMARY CARDS
-================================================== */
-
-.monthly-summary {
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-top: 24px;
-}
-
-.summary-box {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid #e2e8f0;
-  padding: 18px 22px;
-  border-radius: 14px;
-  min-width: 200px;
-  flex: 1 1 200px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-}
-
-.summary-box span {
-  display: block;
-  color: #64748b;
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-
-.summary-box strong {
-  font-size: 1.5rem;
-  color: var(--crest-blue);
-  font-weight: 800;
 }
 
 footer {
@@ -653,97 +640,39 @@ footer {
 }
 
 /* ==================================================
-   9. MOBILE RESPONSIVE TWEAKS (<= 680px)
+   8. MOBILE RESPONSIVENESS
 ================================================== */
+@media (max-width: 768px) {
+  .report-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-@media (max-width: 680px) {
-  .container {
+  .report-controls .form-group {
+    max-width: 100%;
+  }
+
+  .report-buttons {
     width: 100%;
-    padding: 0 10px;
-    margin: 12px auto;
+    margin-left: 0;
+  }
+
+  .report-buttons button {
+    flex: 1 1 45%;
   }
 
   .navbar {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-    padding: 14px 16px;
   }
 
   .nav-brand {
     justify-content: center;
-    font-size: 0.88rem;
   }
 
   .nav-links {
     justify-content: space-between;
     width: 100%;
-  }
-
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 18px;
-  }
-
-  .school-crest-badge {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .bill-info {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .item-header-row {
-    display: none !important;
-  }
-
-  .item-row {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    grid-template-columns: none !important;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    padding: 12px;
-    border-radius: 12px;
-    gap: 8px !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-  }
-
-  .item-row .item-name {
-    width: 100% !important;
-    flex: 1 1 100% !important;
-  }
-
-  .item-row .item-size {
-    flex: 1 1 calc(50% - 4px) !important;
-  }
-
-  .item-row .item-qty {
-    flex: 1 1 80px !important;
-    max-width: 90px;
-  }
-
-  .item-row .item-amount {
-    flex: 2 1 110px !important;
-  }
-
-  .item-row .remove-item-btn {
-    flex: 0 0 42px !important;
-    height: 42px !important;
-    width: 42px !important;
-  }
-
-  .form-actions {
-    flex-direction: column;
-  }
-
-  .save-btn,
-  .clear-btn {
-    width: 100%;
-    padding: 12px;
-    text-align: center;
   }
 }
