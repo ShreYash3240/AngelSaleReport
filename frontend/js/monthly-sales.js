@@ -281,6 +281,172 @@ function renderReportTable(bills) {
 }
 
 // ==================================================
+// CHART.JS CLIENT-SIDE ANALYTICS
+// ==================================================
+let currentBookChart = null;
+
+function renderBooksChart() {
+    const canvas = document.getElementById("salesChartCanvas");
+    const chartTypeSelect = document.getElementById("chartTypeSelect");
+    if (!canvas || !window.Chart) return;
+
+    // Destroy existing chart instance before creating a new one
+    if (currentBookChart) {
+        currentBookChart.destroy();
+        currentBookChart = null;
+    }
+
+    if (!bookBillsCache || bookBillsCache.length === 0) return;
+
+    const ctx = canvas.getContext("2d");
+    const type = chartTypeSelect?.value || "bar";
+
+    if (type === "bar") {
+        // Aggregate revenue by standard
+        const stdTotals = {};
+        bookBillsCache.forEach(b => {
+            const std = b.standard || "Other";
+            stdTotals[std] = (stdTotals[std] || 0) + (Number(b.total) || 0);
+        });
+
+        currentBookChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: Object.keys(stdTotals),
+                datasets: [{
+                    label: "Revenue (₹)",
+                    data: Object.values(stdTotals),
+                    backgroundColor: "#1d4ed8",
+                    hoverBackgroundColor: "#1e40af",
+                    borderRadius: 6,
+                    maxBarThickness: 45
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` Revenue: ₹${Number(ctx.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => "₹" + Number(v).toLocaleString("en-IN") },
+                        grid: { color: "#f1f5f9" }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+    } else if (type === "pie") {
+        // Aggregate Cash vs Online collection
+        const payTotals = { Cash: 0, "Online / UPI": 0 };
+        bookBillsCache.forEach(b => {
+            if (b.paymentMode === "Online") payTotals["Online / UPI"] += (Number(b.total) || 0);
+            else payTotals["Cash"] += (Number(b.total) || 0);
+        });
+
+        currentBookChart = new Chart(ctx, {
+            type: "pie",
+            data: {
+                labels: Object.keys(payTotals),
+                datasets: [{
+                    data: Object.values(payTotals),
+                    backgroundColor: ["#f59e0b", "#1d4ed8"],
+                    borderWidth: 2,
+                    borderColor: "#ffffff"
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: "bottom" },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ₹${Number(ctx.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                        }
+                    }
+                }
+            }
+        });
+
+    } else if (type === "line") {
+        // Daily timeline trend
+        const dailyTotals = {};
+        bookBillsCache.forEach(b => {
+            const dt = b.billDate || "";
+            if (dt) dailyTotals[dt] = (dailyTotals[dt] || 0) + (Number(b.total) || 0);
+        });
+
+        const sortedDates = Object.keys(dailyTotals).sort();
+        const sortedValues = sortedDates.map(d => dailyTotals[d]);
+
+        currentBookChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: sortedDates.map(d => {
+                    const p = d.split("-");
+                    return p.length === 3 ? `${p[2]}/${p[1]}` : d;
+                }),
+                datasets: [{
+                    label: "Daily Collection (₹)",
+                    data: sortedValues,
+                    borderColor: "#ef4444",
+                    backgroundColor: "rgba(239, 68, 68, 0.08)",
+                    borderWidth: 2.5,
+                    pointBackgroundColor: "#ef4444",
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.35
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` Total: ₹${Number(ctx.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => "₹" + Number(v).toLocaleString("en-IN") },
+                        grid: { color: "#f1f5f9" }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Re-render chart on dropdown change
+document.getElementById("chartTypeSelect")?.addEventListener("change", renderBooksChart);
+
+// Hook automatically into your table renderer
+const baseRenderReportTable = renderReportTable;
+renderReportTable = function(bills) {
+    baseRenderReportTable(bills);
+    renderBooksChart();
+};
+
+// ==================================================
 // EXCEL MATRIX EXPORT (.XLSX)
 // ==================================================
 function exportUniformXlsx() {
