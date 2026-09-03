@@ -286,8 +286,9 @@ select:focus {
 
 .item-row {
     display: grid;
-    grid-template-columns: minmax(180px, 1.5fr) 95px 140px 36px;
-    gap: 12px;
+    /* Drops from 1.5fr to 1fr, with a smaller 140px baseline */
+    grid-template-columns: minmax(140px, 1fr) 90px 80px 130px 36px;
+    gap: 10px;
     align-items: center;
     margin-bottom: 10px;
 }

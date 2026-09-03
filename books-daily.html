@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Sales Portal | Books Daily Sales</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="school logo.png" />
+</head>
+<body>
+<div class="container">
+    <!-- Navbar (Books active) -->
+    <header class="navbar">
+        <div class="nav-brand">
+            👋 Welcome, <span id="userEmailDisplay" class="welcome-user">Accountant</span>
+        </div>
+        <nav class="nav-links">
+            <div class="nav-dropdown">
+                <button type="button" class="nav-dropbtn">Uniform ▾</button>
+                <div class="dropdown-menu">
+                    <a href="index.html" class="dropdown-item">Daily Sales</a>
+                    <a href="monthly-sales.html" class="dropdown-item">Monthly Report</a>
+                </div>
+            </div>
+            <div class="nav-dropdown active">
+                <button type="button" class="nav-dropbtn">Books ▾</button>
+                <div class="dropdown-menu">
+                    <a href="books-daily.html" class="dropdown-item active">Daily Sales</a>
+                    <a href="books-monthly.html" class="dropdown-item">Monthly Report</a>
+                </div>
+            </div>
+            <button id="authBtn" type="button" class="logout-btn">Logout</button>
+        </nav>
+    </header>
+
+    <div id="appContainer" style="display: none;">
+        <header class="header">
+            <h1>Angel School Sales - Books Department</h1>
+            <p>Daily Textbooks & Notebooks Bill Entry</p>
+        </header>
+
+        <!-- New Book Bill Card -->
+        <section class="card">
+            <h2>New Book Bill</h2>
+            <form id="bookBillForm">
+                <div class="bill-info">
+                    <div class="form-group">
+                        <label for="branch">Branch *</label>
+                        <select id="branch" required>
+                            <option value="">Select Branch</option>
+                            <option value="Hadapsar">Hadapsar</option>
+                            <option value="Loni">Loni</option>
+                            <option value="Fursungi">Fursungi</option>
+                            <option value="Urli">Urli</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="billDate">Bill Date *</label>
+                        <input type="date" id="billDate" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="billNo">Bill No. *</label>
+                        <input type="text" id="billNo" placeholder="Enter bill number" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="standard">Standard *</label>
+                        <select id="standard" required>
+                            <option value="">Select Standard</option>
+                            <option value="I">I</option>
+                            <option value="II">II</option>
+                            <option value="III">III</option>
+                            <option value="IV">IV</option>
+                            <option value="V">V</option>
+                            <option value="VI">VI</option>
+                            <option value="VII">VII</option>
+                            <option value="VIII">VIII</option>
+                            <option value="IX">IX</option>
+                            <option value="X">X</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="paymentMode">Payment Mode *</label>
+                        <select id="paymentMode" required>
+                            <option value="">Select Payment Mode</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Online">Online</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="transactionIdGroup" style="display: none;">
+                        <label for="transactionId">Transaction ID *</label>
+                        <input type="text" id="transactionId" placeholder="Enter transaction ID" />
+                    </div>
+                </div>
+
+                <!-- Book Items Section -->
+                <div class="items-section">
+                    <div class="items-header">
+                        <div>
+                            <h3>Book Items *</h3>
+                            <p class="items-help">Prices auto-fill according to the selected standard</p>
+                        </div>
+                        <button type="button" id="addItemBtn" class="add-item-btn">+ Add Item</button>
+                    </div>
+
+                    <div class="item-row item-header-row" style="grid-template-columns: minmax(180px, 1.5fr) 95px 140px 36px;">
+                        <div>Book Item *</div>
+                        <div>Qty. *</div>
+                        <div>Amount (₹) *</div>
+                        <div></div>
+                    </div>
+
+                    <div id="itemsContainer"></div>
+
+                    <div class="bill-total">
+                        <span>Total</span>
+                        <strong id="billTotal">₹0.00</strong>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="save-btn">Save Bill</button>
+                        <button type="button" id="clearBtn" class="clear-btn">Clear</button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <!-- Today's Book Bills Card -->
+        <section class="card">
+            <div class="section-header">
+                <h2>Today's Book Bills</h2>
+                <div class="form-group" style="max-width: 250px;">
+                    <label for="todayBranchFilter">Filter Branch</label>
+                    <select id="todayBranchFilter">
+                        <option value="All">All Branches</option>
+                        <option value="Hadapsar">Hadapsar</option>
+                        <option value="Loni">Loni</option>
+                        <option value="Fursungi">Fursungi</option>
+                        <option value="Urli">Urli</option>
+                    </select>
+                </div>
+                <div class="today-summary">
+                    Bills: <strong id="todayBillCount">0</strong> &nbsp;|&nbsp; Sales: <strong id="todayTotal">₹0.00</strong>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Bill Date</th>
+                            <th>Branch</th>
+                            <th>Bill No.</th>
+                            <th>Std.</th>
+                            <th>Payment</th>
+                            <th>Txn ID</th>
+                            <th>Items</th>
+                            <th>Qty.</th>
+                            <th>Amount</th>
+                            <th>Total</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="billsTableBody"></tbody>
+                </table>
+                <div id="emptyMessage" class="empty-message">No book bills entered for today.</div>
+            </div>
+        </section>
+
+        <footer>
+            <p>© 2026 School Sales Portal • Books Department</p>
+        </footer>
+    </div>
+</div>
+
+<script src="prices.js"></script>
+<script src="books-daily.js"></script>
+</body>
+</html>
