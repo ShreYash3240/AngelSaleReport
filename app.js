@@ -43,19 +43,13 @@ function parseJwt(token) {
 }
 
 function handleLogout() {
-    // 1. Clear local session keys
     sessionStorage.clear();
     localStorage.removeItem("cognito_id_token");
 
-    // 2. Build the standard Cognito logout URL
-    const cognitoLogoutUrl = `${COGNITO_AUTH_DOMAIN}/logout?client_id=${COGNITO_CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
-
-    // 3. Chain through Google's session logout endpoint first
-    const googleLogoutUrl = `https://accounts.google.com/Logout?continue=${encodeURIComponent(cognitoLogoutUrl)}`;
-
-    // 4. Redirect
-    window.location.replace(googleLogoutUrl);
+    const logoutUrl = `${COGNITO_AUTH_DOMAIN}/logout?client_id=${COGNITO_CLIENT_ID}&logout_uri=${encodeURIComponent(REDIRECT_URI)}`;
+    window.location.replace(logoutUrl);
 }
+
 
 
 function enforceAuthentication() {
