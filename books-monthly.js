@@ -13,6 +13,8 @@ const monthlyTotal = document.getElementById("monthlyTotal");
 const monthlySalesBody = document.getElementById("monthlySalesBody");
 const tableTotalsFooter = document.getElementById("tableTotalsFooter");
 
+let bookBillsCache = [];
+
 // Auth check
 const token = sessionStorage.getItem("cognito_id_token");
 if (!token) {
@@ -37,14 +39,16 @@ async function loadMonthlyReport() {
     let url = `${API_BASE_URL}/bills?department=Books&month=${month}`;
     if (branch !== "All") url += `&branch=${encodeURIComponent(branch)}`;
 
+    monthlySalesBody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px;">Loading records...</td></tr>`;
+
     try {
         const res = await fetch(url);
-        const bills = await res.json();
+        bookBillsCache = await res.json();
 
         monthlySalesBody.innerHTML = "";
         tableTotalsFooter.innerHTML = "";
 
-        if (bills.length === 0) {
+        if (bookBillsCache.length === 0) {
             monthlySalesBody.innerHTML = `<tr><td colspan="8" class="empty-message">No book records found for this month.</td></tr>`;
             monthlyBillCount.textContent = "0";
             monthlyTotal.textContent = "₹0.00";
@@ -56,7 +60,7 @@ async function loadMonthlyReport() {
         let sumNotebooks = 0;
         let sumComplete = 0;
 
-        bills.forEach(bill => {
+        bookBillsCache.forEach(bill => {
             totalRev += Number(bill.total) || 0;
 
             let textQty = 0;
@@ -64,9 +68,9 @@ async function loadMonthlyReport() {
             let compQty = 0;
 
             (bill.items || []).forEach(i => {
-                if (i.name === "TEXTBOOKS SET") textQty += i.quantity || 0;
-                else if (i.name === "NOTEBOOK SET") noteQty += i.quantity || 0;
-                else if (i.name === "TOTAL AMOUNT") compQty += i.quantity || 0;
+                if (i.name === "TEXTBOOKS SET") textQty += Number(i.quantity) || 0;
+                else if (i.name === "NOTEBOOK SET") noteQty += Number(i.quantity) || 0;
+                else if (i.name === "TOTAL AMOUNT") compQty += Number(i.quantity) || 0;
             });
 
             sumTextbooks += textQty;
@@ -87,7 +91,7 @@ async function loadMonthlyReport() {
             monthlySalesBody.appendChild(tr);
         });
 
-        monthlyBillCount.textContent = bills.length;
+        monthlyBillCount.textContent = bookBillsCache.length;
         monthlyTotal.textContent = `₹${totalRev.toFixed(2)}`;
 
         tableTotalsFooter.innerHTML = `
@@ -101,12 +105,53 @@ async function loadMonthlyReport() {
         `;
     } catch (err) {
         console.error("Monthly report fetch error:", err);
+        monthlySalesBody.innerHTML = `<tr><td colspan="8" style="color:red; text-align:center; padding: 20px;">Error loading bills: ${err.message}</td></tr>`;
     }
+}
+
+function exportBooksXlsx() {
+    if (!bookBillsCache || bookBillsCache.length === 0) {
+        alert("No book bills to export for this month.");
+        return;
+    }
+
+    if (typeof XLSX === "undefined") {
+        alert("Excel export library failed to load. Check your internet connection.");
+        return;
+    }
+
+    const month = salesMonth.value || "Monthly";
+
+    const rows = bookBillsCache.map(bill => {
+        let textQty = 0, noteQty = 0, compQty = 0;
+        (bill.items || []).forEach(i => {
+            if (i.name === "TEXTBOOKS SET") textQty += Number(i.quantity) || 0;
+            else if (i.name === "NOTEBOOK SET") noteQty += Number(i.quantity) || 0;
+            else if (i.name === "TOTAL AMOUNT") compQty += Number(i.quantity) || 0;
+        });
+
+        return {
+            "Bill No.": bill.billNo,
+            "Branch": bill.branch || "",
+            "Transaction ID": bill.transactionId || "",
+            "Req Date": bill.billDate,
+            "Amount": Number(bill.total) || 0,
+            "TEXTBOOKS SET": textQty || "",
+            "NOTEBOOK SET": noteQty || "",
+            "COMPLETE SET": compQty || ""
+        };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Books Sales");
+    XLSX.writeFile(workbook, `${month}-Books-Sales-Matrix.xlsx`);
 }
 
 filterReportBtn.addEventListener("click", loadMonthlyReport);
 salesMonth.addEventListener("change", loadMonthlyReport);
 monthlyBranchFilter.addEventListener("change", loadMonthlyReport);
+exportXlsxBtn.addEventListener("click", exportBooksXlsx);
 
-// Initial trigger
+// Initial load
 loadMonthlyReport();
