@@ -403,6 +403,62 @@ function renderUniformsChart() {
             }
         });
 
+    } else if (type === "itemsPie") {
+        // Aggregate individual garment/item quantities sold using expandBillItems()
+        const itemTotals = {};
+        XLSX_COLUMNS.forEach(col => itemTotals[col] = 0);
+
+        cachedUniformBills.forEach(b => {
+            const expanded = expandBillItems(b);
+            XLSX_COLUMNS.forEach(col => {
+                itemTotals[col] += (expanded[col] || 0);
+            });
+        });
+
+        // Only include items that have at least 1 unit sold
+        const activeLabels = [];
+        const activeCounts = [];
+        XLSX_COLUMNS.forEach(col => {
+            if (itemTotals[col] > 0) {
+                activeLabels.push(col);
+                activeCounts.push(itemTotals[col]);
+            }
+        });
+
+        // Vibrant palette for individual items
+        const itemPalette = [
+            "#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed",
+            "#0891b2", "#db2777", "#4b5563", "#ea580c", "#16a34a"
+        ];
+
+        currentUniformChart = new Chart(ctx, {
+            type: "pie",
+            data: {
+                labels: activeLabels,
+                datasets: [{
+                    data: activeCounts,
+                    backgroundColor: itemPalette.slice(0, activeLabels.length),
+                    borderWidth: 2,
+                    borderColor: "#ffffff"
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { 
+                        position: "bottom",
+                        labels: { boxWidth: 14, padding: 12, font: { size: 11, weight: "bold" } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` ${ctx.label}: ${ctx.raw} units sold`
+                        }
+                    }
+                }
+            }
+        });
+
     } else if (type === "line") {
         // Daily timeline trend
         const dailyTotals = {};
