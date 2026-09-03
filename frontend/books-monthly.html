@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>School Sales Portal | Books Reports</title>
-    <link rel="stylesheet" href="css/style.css" />
+    <!-- Cache-busting query parameter forces browser to reload fresh CSS -->
+    <link rel="stylesheet" href="css/style.css?v=2.0" />
     <link rel="icon" type="image/png" sizes="32x32" href="assets/images/school logo.png" />
     <!-- SheetJS for clean Excel exports -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -47,7 +48,9 @@
             </div>
         </header>
 
-                    <!-- Filters & Range Controls -->
+        <!-- Filters & Range Controls Card -->
+        <section class="card">
+            <h2>Report Parameters & Filters</h2>
             <div class="report-controls">
                 <div class="form-group">
                     <label for="reportFromDate">From Date</label>
@@ -77,7 +80,6 @@
                     <button type="button" id="exportExcelBtn" class="save-btn">📥 Export Excel</button>
                 </div>
             </div>
-
 
             <!-- Summary KPI Cards -->
             <div class="monthly-summary">

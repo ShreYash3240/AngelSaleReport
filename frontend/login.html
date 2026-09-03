@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>School Sales Portal | Sign In</title>
-  <link rel="stylesheet" href="login.css" />
+  <!-- Cache buster ?v=2.0 guarantees the browser loads the new CSS -->
+  <link rel="stylesheet" href="css/login.css?v=2.0" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/images/school logo.png" />
 </head>
 <body>
+  <!-- Ambient Gradient Background Blobs -->
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
   <div class="blob blob-3"></div>
@@ -19,14 +21,19 @@
     <div class="card-header">
       <div class="brand-badge">
         <span class="badge-dot"></span>
-        <span>Sales & Billing Management</span>
+        <span>Sales & Billing Portal</span>
       </div>
-      <h1>Angel School Sales Portal</h1>
-      <p class="subtitle">Authenticate with your school credentials.</p>
+      
+      <div class="school-brand-box">
+        <img src="assets/images/school logo.png" alt="School Crest" class="login-logo" />
+        <h1>Angel High School</h1>
+      </div>
+
+      <p class="subtitle">Secure Accountant & Faculty Sign In</p>
     </div>
 
     <div class="action-container">
-      <button id="googleLoginBtn" class="google-btn">
+      <button id="googleLoginBtn" class="google-btn" type="button">
         <svg class="google-icon" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
           <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -47,13 +54,11 @@
     const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
     const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
 
-    // Direct Google bypass: jumps straight to Google with zero middle page
+    // Direct Google bypass: jumps straight to Google with zero intermediary screen
     document.getElementById("googleLoginBtn").addEventListener("click", () => {
       const directGoogleLoginUrl = `${COGNITO_AUTH_DOMAIN}/oauth2/authorize?identity_provider=Google&client_id=${COGNITO_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
-      
       window.location.href = directGoogleLoginUrl;
     });
   </script>
-
 </body>
 </html>
