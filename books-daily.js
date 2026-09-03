@@ -1,8 +1,7 @@
 // ==================================================
-// BOOKS DEPARTMENT - DAILY SALES (books-daily.js)
+// BOOKS DEPARTMENT - BILL ENTRY (books-daily.js)
 // ==================================================
 const API_BASE_URL = "https://myen97dfp7.execute-api.ap-south-1.amazonaws.com";
-const STARTING_BILL_NO = 22026; // Distinct sequence for book bills
 
 const bookBillForm = document.getElementById("bookBillForm");
 const branch = document.getElementById("branch");
@@ -19,12 +18,6 @@ const addItemBtn = document.getElementById("addItemBtn");
 const billTotal = document.getElementById("billTotal");
 const clearBtn = document.getElementById("clearBtn");
 
-const billsTableBody = document.getElementById("billsTableBody");
-const emptyMessage = document.getElementById("emptyMessage");
-const todayBillCount = document.getElementById("todayBillCount");
-const todayTotal = document.getElementById("todayTotal");
-const todayBranchFilter = document.getElementById("todayBranchFilter");
-
 const BUNDLE_OPTIONS = [
     { key: "TOTAL AMOUNT", label: "COMPLETE BOOK SET (Both Text & Notes)" },
     { key: "TEXTBOOKS SET", label: "TEXTBOOKS SET ONLY" },
@@ -32,12 +25,8 @@ const BUNDLE_OPTIONS = [
 ];
 
 // ==================================================
-// AUTHENTICATION CHECK & AUDIT HELPERS
+// AUTHENTICATION & HEADERS
 // ==================================================
-const COGNITO_AUTH_DOMAIN = "https://school-sales-app-auth.auth.ap-south-1.amazoncognito.com";
-const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
-const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
-
 function handleLogout() {
     sessionStorage.clear();
     localStorage.removeItem("cognito_id_token");
@@ -45,8 +34,7 @@ function handleLogout() {
     window.location.replace("login.html");
 }
 
-
-function enforceAuth() {
+(function enforceAuth() {
     const token = sessionStorage.getItem("cognito_id_token");
     if (!token) return window.location.replace("login.html");
 
@@ -76,10 +64,8 @@ function enforceAuth() {
     } catch {
         window.location.replace("login.html");
     }
-}
-enforceAuth();
+})();
 
-// Header helper: Passes Cognito JWT to Lambda for server-side CloudWatch audit logging
 function getAuthHeaders() {
     const token = sessionStorage.getItem("cognito_id_token");
     return {
@@ -89,21 +75,18 @@ function getAuthHeaders() {
 }
 
 // ==================================================
-// PRICING LOOKUP (BUNDLES + INDIVIDUAL UNITS)
+// PRICING LOOKUP
 // ==================================================
 function getAvailableBookItems(std) {
     if (!std) return [];
-
     const items = [];
 
-    // 1. Standard Bundles
     BUNDLE_OPTIONS.forEach(b => {
         if (typeof BOOKS_PRICE_MATRIX !== "undefined" && BOOKS_PRICE_MATRIX[std]?.[b.key]) {
             items.push({ value: b.key, label: b.label, isBundle: true });
         }
     });
 
-    // 2. Individual Textbooks & Notebooks
     if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[std]) {
         Object.keys(BOOK_ITEMS_BREAKDOWN[std]).forEach(singleBook => {
             items.push({ value: singleBook, label: singleBook, isBundle: false });
@@ -117,16 +100,12 @@ function getBookUnitPrice(itemName) {
     const std = standard.value.trim();
     if (!std || !itemName) return 0;
 
-    // A. Check in Standard Bundles Matrix
     if (typeof BOOKS_PRICE_MATRIX !== "undefined" && BOOKS_PRICE_MATRIX[std]?.[itemName] !== undefined) {
         return BOOKS_PRICE_MATRIX[std][itemName];
     }
-
-    // B. Check in Granular Breakdown Matrix
     if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[std]?.[itemName] !== undefined) {
         return BOOK_ITEMS_BREAKDOWN[std][itemName];
     }
-
     return 0;
 }
 
@@ -143,23 +122,20 @@ function populateItemSelectOptions(selectElement, selectedValue = "") {
     }
 
     let html = `<option value="">Select Book / Set</option>`;
-    
-    // Group 1: Bundles
     const bundles = availableItems.filter(i => i.isBundle);
     if (bundles.length > 0) {
         html += `<optgroup label="── Full Sets / Bundles ──">`;
         bundles.forEach(b => {
-            html += `<option value="${escapeHTML(b.value)}">${escapeHTML(b.label)}</option>`;
+            html += `<option value="${b.value}">${b.label}</option>`;
         });
         html += `</optgroup>`;
     }
 
-    // Group 2: Individual Books
     const singles = availableItems.filter(i => !i.isBundle);
     if (singles.length > 0) {
         html += `<optgroup label="── Individual Textbooks & Notebooks ──">`;
         singles.forEach(s => {
-            html += `<option value="${escapeHTML(s.value)}">${escapeHTML(s.label)}</option>`;
+            html += `<option value="${s.value}">${s.label}</option>`;
         });
         html += `</optgroup>`;
     }
@@ -251,23 +227,11 @@ function updateTotal() {
 }
 
 // ==================================================
-// UTILITIES & DATA SYNC
+// UTILITIES & AUTO-FILL HELPERS
 // ==================================================
 function getTodayDate() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function formatDate(ds) {
-    if (!ds) return "";
-    const p = ds.split("-");
-    return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : ds;
-}
-
-function escapeHTML(str) {
-    const div = document.createElement("div");
-    div.textContent = str ?? "";
-    return div.innerHTML;
 }
 
 function handlePaymentMode() {
@@ -277,6 +241,12 @@ function handlePaymentMode() {
     if (!isOnline) transactionId.value = "";
 }
 
+const BOOK_BILL_PREFIX = "B";
+
+function formatBookBillNo(num) {
+    return `${BOOK_BILL_PREFIX}${String(num).padStart(4, "0")}`;
+}
+
 async function setNextBillNumber() {
     try {
         const res = await fetch(`${API_BASE_URL}/bills?department=Books`, {
@@ -284,10 +254,20 @@ async function setNextBillNumber() {
         });
         if (!res.ok) throw new Error();
         const bills = await res.json();
-        const max = bills.reduce((m, b) => Math.max(m, parseInt(b.billNo, 10) || 0), 0);
-        billNo.value = max >= STARTING_BILL_NO ? max + 1 : STARTING_BILL_NO;
+
+        let maxNum = 0;
+        bills.forEach(b => {
+            const raw = String(b.billNo || "").trim();
+            const cleaned = raw.toUpperCase().replace(/^B/, "");
+            const parsed = parseInt(cleaned, 10);
+            if (!isNaN(parsed) && parsed > maxNum) {
+                maxNum = parsed;
+            }
+        });
+
+        billNo.value = formatBookBillNo(maxNum + 1);
     } catch {
-        billNo.value = STARTING_BILL_NO;
+        billNo.value = formatBookBillNo(1);
     }
 }
 
@@ -304,98 +284,10 @@ function clearForm() {
 }
 
 // ==================================================
-// API CALLS
-// ==================================================
-async function fetchAndDisplayTodayBills() {
-    const today = getTodayDate();
-    const filter = todayBranchFilter?.value || "All";
-    let url = `${API_BASE_URL}/bills?department=Books&date=${today}`;
-    if (filter !== "All") url += `&branch=${encodeURIComponent(filter)}`;
-
-    try {
-        const res = await fetch(url, {
-            headers: getAuthHeaders()
-        });
-        if (!res.ok) throw new Error();
-        const bills = await res.json();
-
-        billsTableBody.innerHTML = "";
-        let totalSales = 0;
-
-        if (bills.length === 0) {
-            emptyMessage.style.display = "block";
-        } else {
-            emptyMessage.style.display = "none";
-            bills.forEach(bill => {
-                totalSales += Number(bill.total) || 0;
-                const tr = document.createElement("tr");
-
-                const itemNames = (bill.items || []).map(i => `<div>${escapeHTML(i.name)}</div>`).join("");
-                const itemQtys  = (bill.items || []).map(i => `<div>${Number(i.quantity) || 0}</div>`).join("");
-                const itemAmts  = (bill.items || []).map(i => `<div>₹${(Number(i.amount) || 0).toFixed(2)}</div>`).join("");
-
-                tr.innerHTML = `
-                    <td>${formatDate(bill.billDate)}</td>
-                    <td>${escapeHTML(bill.branch || "-")}</td>
-                    <td>${escapeHTML(bill.billNo)}</td>
-                    <td><strong>${escapeHTML(bill.studentName || "-")}</strong></td>
-                    <td>${escapeHTML(bill.standard)}</td>
-                    <td>${escapeHTML(bill.paymentMode || "")}</td>
-                    <td>${escapeHTML(bill.transactionId || "-")}</td>
-                    <td class="item-list">${itemNames}</td>
-                    <td class="item-list">${itemQtys}</td>
-                    <td class="item-list">${itemAmts}</td>
-                    <td>₹${(Number(bill.total) || 0).toFixed(2)}</td>
-                    <td>
-                        <button type="button" class="delete-btn" data-branch="${escapeHTML(bill.branch)}" data-date="${bill.billDate}" data-billno="${bill.billNo}">
-                            Delete
-                        </button>
-                    </td>
-                `;
-                billsTableBody.appendChild(tr);
-            });
-        }
-        todayBillCount.textContent = bills.length;
-        todayTotal.textContent = `₹${totalSales.toFixed(2)}`;
-    } catch (err) {
-        console.error("Error loading book bills:", err);
-    }
-}
-
-async function deleteBill(bBranch, bDate, bNo) {
-    if (!confirm(`Delete Book Bill #${bNo}?`)) return;
-    try {
-        const res = await fetch(`${API_BASE_URL}/bills?department=Books&branch=${encodeURIComponent(bBranch)}&billDate=${bDate}&billNo=${bNo}`, { 
-            method: "DELETE",
-            headers: getAuthHeaders()
-        });
-        
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Delete failed");
-
-        alert(`Bill #${bNo} deleted.`);
-        fetchAndDisplayTodayBills();
-        setNextBillNumber();
-    } catch (err) {
-        alert("Delete failed: " + (err.message || "Unknown error"));
-    }
-}
-
-// ==================================================
 // EVENT LISTENERS
 // ==================================================
 branch?.addEventListener("change", () => {
     localStorage.setItem("selectedBranch", branch.value);
-    if (todayBranchFilter) todayBranchFilter.value = branch.value;
-    fetchAndDisplayTodayBills();
-});
-
-todayBranchFilter?.addEventListener("change", () => {
-    if (todayBranchFilter.value !== "All") {
-        localStorage.setItem("selectedBranch", todayBranchFilter.value);
-        if (branch) branch.value = todayBranchFilter.value;
-    }
-    fetchAndDisplayTodayBills();
 });
 
 standard?.addEventListener("change", refreshAllDropdownsForStandard);
@@ -418,12 +310,6 @@ itemsContainer?.addEventListener("click", (e) => {
     if (itemsContainer.querySelectorAll(".item-row").length === 1) return alert("At least one item required.");
     e.target.closest(".item-row").remove();
     updateTotal();
-});
-
-billsTableBody?.addEventListener("click", (e) => {
-    if (!e.target.classList.contains("delete-btn")) return;
-    const btn = e.target;
-    deleteBill(btn.getAttribute("data-branch"), btn.getAttribute("data-date"), btn.getAttribute("data-billno"));
 });
 
 bookBillForm?.addEventListener("submit", async (e) => {
@@ -476,22 +362,20 @@ bookBillForm?.addEventListener("submit", async (e) => {
 
         alert(`Book Bill #${payload.billNo} saved successfully!`);
         clearForm();
-        fetchAndDisplayTodayBills();
         setNextBillNumber();
     } catch {
         alert("Could not reach AWS backend.");
     }
 });
 
-// Init
+// ==================================================
+// INITIALIZATION
+// ==================================================
 const savedBranch = localStorage.getItem("selectedBranch");
-if (savedBranch) {
-    if (branch) branch.value = savedBranch;
-    if (todayBranchFilter) todayBranchFilter.value = savedBranch;
-}
+if (savedBranch && branch) branch.value = savedBranch;
+
 billDate.value = getTodayDate();
 itemsContainer.innerHTML = "";
 addBookRow();
 handlePaymentMode();
 setNextBillNumber();
-fetchAndDisplayTodayBills();

@@ -1,28 +1,30 @@
 // ==================================================
-// BOOKS DEPARTMENT - MONTHLY REPORT (books-monthly.js)
+// BOOKS DEPARTMENT - MONTHLY & RANGE REPORT (books-monthly.js)
 // ==================================================
 const API_BASE_URL = "https://myen97dfp7.execute-api.ap-south-1.amazonaws.com";
 
-const salesMonth = document.getElementById("salesMonth");
-const monthlyBranchFilter = document.getElementById("monthlyBranchFilter");
-const filterReportBtn = document.getElementById("filterReportBtn");
-const exportXlsxBtn = document.getElementById("exportXlsxBtn");
+const reportFromDate = document.getElementById("reportFromDate");
+const reportToDate = document.getElementById("reportToDate");
+const reportBranch = document.getElementById("reportBranch");
+const loadReportBtn = document.getElementById("loadReportBtn");
+const thisMonthBtn = document.getElementById("thisMonthBtn");
+const lastMonthBtn = document.getElementById("lastMonthBtn");
+const exportExcelBtn = document.getElementById("exportExcelBtn");
 
-const monthlyBillCount = document.getElementById("monthlyBillCount");
-const monthlyTotal = document.getElementById("monthlyTotal");
-const monthlySalesBody = document.getElementById("monthlySalesBody");
-const tableTotalsFooter = document.getElementById("tableTotalsFooter");
-const emptyMessage = document.getElementById("emptyMessage");
+const summaryTotal = document.getElementById("summaryTotal");
+const summaryCount = document.getElementById("summaryCount");
+const summaryCash = document.getElementById("summaryCash");
+const summaryOnline = document.getElementById("summaryOnline");
+const tableRecordCount = document.getElementById("tableRecordCount");
+
+const reportBody = document.getElementById("reportBody");
+const reportEmptyMessage = document.getElementById("reportEmptyMessage");
 
 let bookBillsCache = [];
 
 // ==================================================
-// AUTH CHECK
+// AUTHENTICATION & HEADERS
 // ==================================================
-const COGNITO_AUTH_DOMAIN = "https://school-sales-app-auth.auth.ap-south-1.amazoncognito.com";
-const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
-const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
-
 function handleLogout() {
     sessionStorage.clear();
     localStorage.removeItem("cognito_id_token");
@@ -30,6 +32,37 @@ function handleLogout() {
     window.location.replace("login.html");
 }
 
+(function enforceAuth() {
+    const token = sessionStorage.getItem("cognito_id_token");
+    if (!token) return window.location.replace("login.html");
+
+    try {
+        const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const json = decodeURIComponent(atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+        const payload = JSON.parse(json);
+
+        if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
+            sessionStorage.removeItem("cognito_id_token");
+            return window.location.replace("login.html");
+        }
+
+        const emailDisplay = document.getElementById("userEmailDisplay");
+        if (emailDisplay) emailDisplay.textContent = payload.name || payload.email || "Accountant";
+
+        const appContainer = document.getElementById("appContainer");
+        if (appContainer) appContainer.style.display = "block";
+
+        const authBtn = document.getElementById("authBtn");
+        if (authBtn) {
+            authBtn.onclick = (e) => {
+                e.preventDefault();
+                handleLogout();
+            };
+        }
+    } catch {
+        window.location.replace("login.html");
+    }
+})();
 
 function getAuthHeaders() {
     const token = sessionStorage.getItem("cognito_id_token");
@@ -39,162 +72,171 @@ function getAuthHeaders() {
     };
 }
 
-const token = sessionStorage.getItem("cognito_id_token");
-if (!token) {
-    window.location.replace("login.html");
-} else {
-    try {
-        const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-        const json = decodeURIComponent(atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
-        const payload = JSON.parse(json);
-        
-        if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
-            sessionStorage.removeItem("cognito_id_token");
-            window.location.replace("login.html");
-        } else {
-            const emailDisplay = document.getElementById("userEmailDisplay");
-            if (emailDisplay) emailDisplay.textContent = payload.name || payload.email || "Accountant";
-            document.getElementById("appContainer").style.display = "block";
-            
-            const authBtn = document.getElementById("authBtn");
-            if (authBtn) authBtn.onclick = (e) => { e.preventDefault(); handleLogout(); };
-        }
-    } catch {
-        window.location.replace("login.html");
-    }
-}
-
-// Current month default
-const now = new Date();
-salesMonth.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
-// Utilities
-function escapeHTML(str) {
-    const div = document.createElement("div");
-    div.textContent = str ?? "";
-    return div.innerHTML;
-}
-
+// ==================================================
+// DATE UTILITIES
+// ==================================================
 function formatDate(ds) {
     if (!ds) return "";
     const p = ds.split("-");
     return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : ds;
 }
 
-// ==================================================
-// LOAD MONTHLY DATA
-// ==================================================
-async function loadMonthlyReport() {
-    const month = salesMonth.value;
-    const branch = monthlyBranchFilter.value;
-    if (!month) return;
+function escapeHTML(str) {
+    const div = document.createElement("div");
+    div.textContent = str ?? "";
+    return div.innerHTML;
+}
 
-    let url = `${API_BASE_URL}/bills?department=Books&month=${month}`;
-    if (branch !== "All") url += `&branch=${encodeURIComponent(branch)}`;
+function setMonthRange(year, monthIndex) {
+    const start = new Date(year, monthIndex, 1);
+    const end = new Date(year, monthIndex + 1, 0);
 
-    monthlySalesBody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 24px;">Loading records...</td></tr>`;
-    if (emptyMessage) emptyMessage.style.display = "none";
+    reportFromDate.value = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
+    reportToDate.value = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+}
 
-    try {
-        const res = await fetch(url, { headers: getAuthHeaders() });
-        if (!res.ok) throw new Error("Could not retrieve bills from API.");
-        bookBillsCache = await res.json();
+// Generates an array of all "YYYY-MM" months between two dates
+function getMonthsInRange(fromStr, toStr) {
+    const months = [];
+    const [fromY, fromM] = fromStr.split("-").map(Number);
+    const [toY, toM] = toStr.split("-").map(Number);
 
-        monthlySalesBody.innerHTML = "";
-        tableTotalsFooter.innerHTML = "";
+    let curY = fromY;
+    let curM = fromM;
 
-        if (bookBillsCache.length === 0) {
-            if (emptyMessage) emptyMessage.style.display = "block";
-            monthlyBillCount.textContent = "0";
-            monthlyTotal.textContent = "₹0.00";
-            return;
+    while (curY < toY || (curY === toY && curM <= toM)) {
+        months.push(`${curY}-${String(curM).padStart(2, "0")}`);
+        curM++;
+        if (curM > 12) {
+            curM = 1;
+            curY++;
         }
-
-        if (emptyMessage) emptyMessage.style.display = "none";
-
-        let totalRev = 0;
-        let sumTextbooks = 0;
-        let sumNotebooks = 0;
-        let sumComplete = 0;
-
-        bookBillsCache.forEach(bill => {
-            totalRev += Number(bill.total) || 0;
-
-            let textQty = 0;
-            let noteQty = 0;
-            let compQty = 0;
-            const extraItems = [];
-
-            (bill.items || []).forEach(i => {
-                const name = (i.name || "").trim();
-                const qty = Number(i.quantity) || 0;
-
-                if (name === "TEXTBOOKS SET") {
-                    textQty += qty;
-                } else if (name === "NOTEBOOK SET") {
-                    noteQty += qty;
-                } else if (name === "TOTAL AMOUNT") {
-                    compQty += qty;
-                } else {
-                    extraItems.push(`${name} (×${qty})`);
-                }
-            });
-
-            sumTextbooks += textQty;
-            sumNotebooks += noteQty;
-            sumComplete += compQty;
-
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-                <td>${escapeHTML(bill.billNo)}</td>
-                <td>${escapeHTML(bill.branch || "-")}</td>
-                <td>${escapeHTML(bill.standard || "-")}</td>
-                <td>${escapeHTML(bill.paymentMode || "-")}</td>
-                <td>${escapeHTML(bill.transactionId || "-")}</td>
-                <td>${formatDate(bill.billDate)}</td>
-                <td>₹${(Number(bill.total) || 0).toFixed(2)}</td>
-                <td>${textQty || "-"}</td>
-                <td>${noteQty || "-"}</td>
-                <td>${compQty || "-"}</td>
-                <td style="font-size: 0.85rem; color: var(--text-muted, #94a3b8);">${extraItems.length > 0 ? extraItems.map(escapeHTML).join(", ") : "-"}</td>
-            `;
-            monthlySalesBody.appendChild(tr);
-        });
-
-        monthlyBillCount.textContent = bookBillsCache.length;
-        monthlyTotal.textContent = `₹${totalRev.toFixed(2)}`;
-
-        tableTotalsFooter.innerHTML = `
-            <tr>
-                <th colspan="6" style="text-align: right;">Total:</th>
-                <th>₹${totalRev.toFixed(2)}</th>
-                <th>${sumTextbooks}</th>
-                <th>${sumNotebooks}</th>
-                <th>${sumComplete}</th>
-                <th></th>
-            </tr>
-        `;
-    } catch (err) {
-        console.error("Monthly report fetch error:", err);
-        monthlySalesBody.innerHTML = `<tr><td colspan="11" style="color:red; text-align:center; padding: 20px;">Error loading bills: ${err.message}</td></tr>`;
     }
+    return months;
 }
 
 // ==================================================
-// EXCEL EXPORT (.XLSX) WITH GRANULAR BOOK COLUMNS
+// DATA FETCHING & REPORT RENDER
+// ==================================================
+async function loadReport() {
+    const from = reportFromDate.value;
+    const to = reportToDate.value;
+    const branch = reportBranch.value;
+
+    if (!from || !to) return alert("Please select both From and To dates.");
+    if (from > to) return alert("From Date cannot be later than To Date.");
+
+    reportBody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 24px;">Generating report...</td></tr>`;
+    if (reportEmptyMessage) reportEmptyMessage.style.display = "none";
+
+    const monthsToFetch = getMonthsInRange(from, to);
+
+    try {
+        let allBills = [];
+
+        // Fetch each required monthly partition
+        for (const month of monthsToFetch) {
+            let url = `${API_BASE_URL}/bills?department=Books&month=${month}`;
+            if (branch !== "All") url += `&branch=${encodeURIComponent(branch)}`;
+            
+            const res = await fetch(url, { headers: getAuthHeaders() });
+            if (res.ok) {
+                const data = await res.json();
+                allBills = allBills.concat(data);
+            }
+        }
+
+        // Filter exact inclusive date range and prevent duplicate keys
+        const seen = new Set();
+        bookBillsCache = allBills.filter(b => {
+            if (b.billDate < from || b.billDate > to) return false;
+            const key = `${b.branch || ""}_${b.billDate}_${b.billNo}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        // Sort by date descending, then bill number descending
+        bookBillsCache.sort((a, b) => 
+            (b.billDate || "").localeCompare(a.billDate || "") || 
+            String(b.billNo).localeCompare(String(a.billNo))
+        );
+
+        renderReportTable(bookBillsCache);
+    } catch (err) {
+        console.error("Report fetch error:", err);
+        reportBody.innerHTML = `<tr><td colspan="10" style="color:red; text-align:center; padding: 20px;">Failed to load report: ${err.message}</td></tr>`;
+    }
+}
+
+function renderReportTable(bills) {
+    reportBody.innerHTML = "";
+
+    let totalRevenue = 0;
+    let cashRevenue = 0;
+    let onlineRevenue = 0;
+
+    if (bills.length === 0) {
+        if (reportEmptyMessage) reportEmptyMessage.style.display = "block";
+        summaryTotal.textContent = "₹0.00";
+        summaryCount.textContent = "0";
+        summaryCash.textContent = "₹0.00";
+        summaryOnline.textContent = "₹0.00";
+        tableRecordCount.textContent = "0";
+        return;
+    }
+
+    if (reportEmptyMessage) reportEmptyMessage.style.display = "none";
+
+    bills.forEach(bill => {
+        const amt = Number(bill.total) || 0;
+        totalRevenue += amt;
+        if (bill.paymentMode === "Online") onlineRevenue += amt;
+        else cashRevenue += amt;
+
+        let totalQty = 0;
+        const itemBreakdown = (bill.items || []).map(i => {
+            const q = Number(i.quantity) || 0;
+            totalQty += q;
+            return `<div>${escapeHTML(i.name)} × ${q} (₹${(Number(i.amount) || 0).toFixed(2)})</div>`;
+        }).join("");
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${formatDate(bill.billDate)}</td>
+            <td>${escapeHTML(bill.branch || "-")}</td>
+            <td><strong>${escapeHTML(bill.billNo)}</strong></td>
+            <td><strong>${escapeHTML(bill.studentName || "-")}</strong></td>
+            <td>${escapeHTML(bill.standard)}</td>
+            <td>${escapeHTML(bill.paymentMode || "")}</td>
+            <td>${escapeHTML(bill.transactionId || "-")}</td>
+            <td class="item-list">${itemBreakdown}</td>
+            <td>${totalQty}</td>
+            <td><strong>₹${amt.toFixed(2)}</strong></td>
+        `;
+        reportBody.appendChild(tr);
+    });
+
+    summaryTotal.textContent = `₹${totalRevenue.toFixed(2)}`;
+    summaryCount.textContent = bills.length;
+    summaryCash.textContent = `₹${cashRevenue.toFixed(2)}`;
+    summaryOnline.textContent = `₹${onlineRevenue.toFixed(2)}`;
+    tableRecordCount.textContent = bills.length;
+}
+
+// ==================================================
+// EXCEL EXPORT (.XLSX) WITH GRANULAR MATRIX & TOTALS
 // ==================================================
 function exportBooksXlsx() {
     if (!bookBillsCache || bookBillsCache.length === 0) {
-        alert("No book bills to export for this month.");
+        alert("No book bills to export for this range.");
         return;
     }
 
     if (typeof XLSX === "undefined") {
-        alert("Excel export library failed to load. Check your internet connection.");
+        alert("Excel export library failed to load. Check your network connection.");
         return;
     }
-
-    const month = salesMonth.value || "Monthly";
 
     // 1. Discover all unique individual book titles sold in this period
     const individualBookNames = new Set();
@@ -209,7 +251,14 @@ function exportBooksXlsx() {
 
     const individualBookList = Array.from(individualBookNames).sort();
 
-    // 2. Build normalized rows for each bill
+    // 2. Build rows for each bill with Student Name
+    let sumTotalAmount = 0;
+    let sumTextQty = 0;
+    let sumNoteQty = 0;
+    let sumCompQty = 0;
+    const sumIndividualBooks = {};
+    individualBookList.forEach(b => sumIndividualBooks[b] = 0);
+
     const rows = bookBillsCache.map(bill => {
         let textQty = 0;
         let noteQty = 0;
@@ -228,23 +277,31 @@ function exportBooksXlsx() {
                 compQty += qty;
             } else {
                 extraItemQuantities[name] = (extraItemQuantities[name] || 0) + qty;
+                sumIndividualBooks[name] = (sumIndividualBooks[name] || 0) + qty;
             }
         });
 
+        const billAmount = Number(bill.total) || 0;
+        sumTotalAmount += billAmount;
+        sumTextQty += textQty;
+        sumNoteQty += noteQty;
+        sumCompQty += compQty;
+
         const row = {
-            "Bill No.": bill.billNo,
+            "Bill Date": formatDate(bill.billDate),
             "Branch": bill.branch || "",
+            "Bill No.": bill.billNo,
+            "Student Name": bill.studentName || "",
             "Standard": bill.standard || "",
             "Payment Mode": bill.paymentMode || "",
             "Transaction ID": bill.transactionId || "",
-            "Req Date": bill.billDate,
-            "Total Amount": Number(bill.total) || 0,
+            "Total Amount": billAmount,
             "TEXTBOOKS SET": textQty || "",
             "NOTEBOOK SET": noteQty || "",
             "COMPLETE SET": compQty || ""
         };
 
-        // Add dynamically discovered individual book quantities as explicit columns
+        // Add dynamically discovered individual book titles
         individualBookList.forEach(bookTitle => {
             row[bookTitle] = extraItemQuantities[bookTitle] || "";
         });
@@ -252,16 +309,62 @@ function exportBooksXlsx() {
         return row;
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
+    // 3. Append Blank Separation Row and Summary Row
+    const emptyRow = {};
+    const totalRow = {
+        "Bill Date": "TOTALS",
+        "Branch": "",
+        "Bill No.": "",
+        "Student Name": "",
+        "Standard": "",
+        "Payment Mode": "",
+        "Transaction ID": "",
+        "Total Amount": sumTotalAmount,
+        "TEXTBOOKS SET": sumTextQty || "",
+        "NOTEBOOK SET": sumNoteQty || "",
+        "COMPLETE SET": sumCompQty || ""
+    };
+
+    individualBookList.forEach(bookTitle => {
+        totalRow[bookTitle] = sumIndividualBooks[bookTitle] || "";
+    });
+
+    const exportData = [...rows, emptyRow, totalRow];
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Books Sales Matrix");
-    XLSX.writeFile(workbook, `${month}-Books-Sales-Matrix.xlsx`);
+
+    const fileName = `Books_Sales_${reportFromDate.value}_to_${reportToDate.value}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
 }
 
-filterReportBtn.addEventListener("click", loadMonthlyReport);
-salesMonth.addEventListener("change", loadMonthlyReport);
-monthlyBranchFilter.addEventListener("change", loadMonthlyReport);
-exportXlsxBtn.addEventListener("click", exportBooksXlsx);
+// ==================================================
+// EVENT LISTENERS & INIT
+// ==================================================
+loadReportBtn?.addEventListener("click", loadReport);
+exportExcelBtn?.addEventListener("click", exportBooksXlsx);
 
-// Initial load
-loadMonthlyReport();
+thisMonthBtn?.addEventListener("click", () => {
+    const d = new Date();
+    setMonthRange(d.getFullYear(), d.getMonth());
+    loadReport();
+});
+
+lastMonthBtn?.addEventListener("click", () => {
+    const d = new Date();
+    setMonthRange(d.getFullYear(), d.getMonth() - 1);
+    loadReport();
+});
+
+reportBranch?.addEventListener("change", loadReport);
+
+// Init with current month range
+const d = new Date();
+setMonthRange(d.getFullYear(), d.getMonth());
+
+const savedBranch = localStorage.getItem("selectedBranch");
+if (savedBranch && reportBranch) {
+    reportBranch.value = savedBranch;
+}
+
+loadReport();

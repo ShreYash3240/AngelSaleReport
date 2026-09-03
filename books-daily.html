@@ -9,7 +9,7 @@
 </head>
 <body>
 <div class="container">
-    <!-- Navbar (Books active) -->
+    <!-- Navbar -->
     <header class="navbar">
         <div class="nav-brand">
             👋 Welcome, <span id="userEmailDisplay" class="welcome-user">Accountant</span>
@@ -35,16 +35,15 @@
 
     <div id="appContainer" style="display: none;">
         <header class="header">
-    <div class="header-title-box">
-        <h1>Angel School Sales - Books Department</h1>
-        <p>Daily Textbooks & Notebooks Bill Entry</p>
-    </div>
-    <div class="school-crest-badge">
-        <img src="school logo.png" alt="Angel High School Crest" />
-        <span>Work is Worship</span>
-    </div>
-</header>
-
+            <div class="header-title-box">
+                <h1>Angel School Sales - Books Department</h1>
+                <p>New Book Bill Entry Portal</p>
+            </div>
+            <div class="school-crest-badge">
+                <img src="school logo.png" alt="Angel High School Crest" />
+                <span>Work is Worship</span>
+            </div>
+        </header>
 
         <!-- New Book Bill Card -->
         <section class="card">
@@ -74,7 +73,7 @@
 
                     <div class="form-group">
                         <label for="billNo">Bill No. *</label>
-                        <input type="text" id="billNo" placeholder="Enter bill number" required />
+                        <input type="text" id="billNo" placeholder="Auto-generates (e.g. B0001)" required />
                     </div>
 
                     <div class="form-group">
@@ -122,7 +121,7 @@
                         <button type="button" id="addItemBtn" class="add-item-btn">+ Add Item</button>
                     </div>
 
-                    <div class="item-row item-header-row" style="grid-template-columns: minmax(260px, 2fr) 90px 130px 36px;">
+                    <div class="item-row item-header-row">
                         <div>Book Item *</div>
                         <div>Qty. *</div>
                         <div>Amount (₹) *</div>
@@ -142,49 +141,6 @@
                     </div>
                 </div>
             </form>
-        </section>
-
-        <!-- Today's Book Bills Card -->
-        <section class="card">
-            <div class="section-header">
-                <h2>Today's Book Bills</h2>
-                <div class="form-group" style="max-width: 250px;">
-                    <label for="todayBranchFilter">Filter Branch</label>
-                    <select id="todayBranchFilter">
-                        <option value="All">All Branches</option>
-                        <option value="Hadapsar">Hadapsar</option>
-                        <option value="Loni">Loni</option>
-                        <option value="Fursungi">Fursungi</option>
-                        <option value="Urli">Urli</option>
-                    </select>
-                </div>
-                <div class="today-summary">
-                    Bills: <strong id="todayBillCount">0</strong> &nbsp;|&nbsp; Sales: <strong id="todayTotal">₹0.00</strong>
-                </div>
-            </div>
-
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Bill Date</th>
-                            <th>Branch</th>
-                            <th>Student Name</th>
-                            <th>Bill No.</th>
-                            <th>Std.</th>
-                            <th>Payment</th>
-                            <th>Txn ID</th>
-                            <th>Items</th>
-                            <th>Qty.</th>
-                            <th>Amount</th>
-                            <th>Total</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="billsTableBody"></tbody>
-                </table>
-                <div id="emptyMessage" class="empty-message">No book bills entered for today.</div>
-            </div>
         </section>
 
         <footer>

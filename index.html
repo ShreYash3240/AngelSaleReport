@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>School Sales Portal | Daily Sales</title>
+    <title>School Sales Portal | Uniform Entry</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/png" sizes="32x32" href="school logo.png" />
 </head>
 <body>
 <div class="container">
+    <!-- Navbar -->
     <header class="navbar">
         <div class="nav-brand">
             👋 Welcome, <span id="userEmailDisplay" class="welcome-user">Accountant</span>
@@ -34,19 +35,19 @@
 
     <div id="appContainer" style="display: none;">
         <header class="header">
-    <div class="header-title-box">
-        <h1>Angel School Sales - Uniform Department</h1>
-        <p>Daily Uniform Bill Entry</p>
-    </div>
-    <div class="school-crest-badge">
-        <img src="school logo.png" alt="Angel High School Crest" />
-        <span>Work is Worship</span>
-    </div>
-</header>
+            <div class="header-title-box">
+                <h1>Angel School Sales - Uniform Department</h1>
+                <p>New Bill Entry Portal</p>
+            </div>
+            <div class="school-crest-badge">
+                <img src="school logo.png" alt="Angel High School Crest" />
+                <span>Work is Worship</span>
+            </div>
+        </header>
 
-
+        <!-- New Uniform Bill Card -->
         <section class="card">
-            <h2>New Bill</h2>
+            <h2>New Uniform Bill</h2>
             <form id="billForm">
                 <div class="bill-info">
                     <div class="form-group">
@@ -72,7 +73,7 @@
 
                     <div class="form-group">
                         <label for="billNo">Bill No. *</label>
-                        <input type="text" id="billNo" placeholder="Enter bill number" required />
+                        <input type="text" id="billNo" placeholder="Auto-generates (e.g. U0001)" required />
                     </div>
 
                     <div class="form-group">
@@ -121,6 +122,7 @@
                     </div>
                 </div>
 
+                <!-- Uniform Items Section -->
                 <div class="items-section">
                     <div class="items-header">
                         <div>
@@ -153,51 +155,8 @@
             </form>
         </section>
 
-        <section class="card">
-            <div class="section-header">
-                <h2>Today's Bills</h2>
-                <div class="form-group" style="max-width: 250px;">
-                    <label for="todayBranchFilter">Filter Branch</label>
-                    <select id="todayBranchFilter">
-                        <option value="All">All Branches</option>
-                        <option value="Hadapsar">Hadapsar</option>
-                        <option value="Loni">Loni</option>
-                        <option value="Fursungi">Fursungi</option>
-                        <option value="Urli">Urli</option>
-                    </select>
-                </div>
-                <div class="today-summary">
-                    Bills: <strong id="todayBillCount">0</strong> &nbsp;|&nbsp; Sales: <strong id="todayTotal">₹0.00</strong>
-                </div>
-            </div>
-
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Bill Date</th>
-                            <th>Branch</th>
-                            <th>Student Name</th>
-                            <th>Bill No.</th>
-                            <th>Std.</th>
-                            <th>Gender</th>
-                            <th>Payment</th>
-                            <th>Txn ID</th>
-                            <th>Items</th>
-                            <th>Qty.</th>
-                            <th>Amount</th>
-                            <th>Total</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="billsTableBody"></tbody>
-                </table>
-                <div id="emptyMessage" class="empty-message">No bills entered for today.</div>
-            </div>
-        </section>
-
         <footer>
-            <p>© 2026 School Sales Portal • Authenticated User Session</p>
+            <p>© 2026 School Sales Portal • Uniform Department</p>
         </footer>
     </div>
 </div>

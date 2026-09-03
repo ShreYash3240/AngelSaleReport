@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>School Sales Portal | Monthly Report</title>
+    <title>School Sales Portal | Uniform Reports</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="icon" type="image/png" sizes="32x32" href="school logo.png" />
+    <!-- SheetJS for clean Excel exports -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
     <div class="container">
+        <!-- Navbar (Uniform active) -->
         <header class="navbar">
             <div class="nav-brand">
                 👋 Welcome, <span id="userEmailDisplay" class="welcome-user">Accountant</span>
@@ -37,28 +40,34 @@
 
         <div id="appContainer" style="display: none;">
             <header class="header">
-    <div class="header-title-box">
-        <h1>Angel School Sales - Uniform Department</h1>
-        <p>Monthly Uniform Sales</p>
-    </div>
-    <div class="school-crest-badge">
-        <img src="school logo.png" alt="Angel High School Crest" />
-        <span>Work is Worship</span>
-    </div>
-</header>
+                <div class="header-title-box">
+                    <h1>Angel School Sales - Uniform Department</h1>
+                    <p>Uniform Sales Report & Detailed Audit</p>
+                </div>
+                <div class="school-crest-badge">
+                    <img src="school logo.png" alt="Angel High School Crest" />
+                    <span>Work is Worship</span>
+                </div>
+            </header>
 
+            <!-- Filters & Range Controls -->
             <section class="card">
-                <h2>Report Parameters & Summary</h2>
+                <h2>Report Filters</h2>
 
-                <div class="monthly-entry-controls" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
-                    <div class="form-group" style="min-width: 180px;">
-                        <label for="salesMonth">Select Month</label>
-                        <input type="month" id="salesMonth" required />
+                <div class="report-controls">
+                    <div class="form-group" style="max-width: 170px;">
+                        <label for="reportFromDate">From Date</label>
+                        <input type="date" id="reportFromDate" />
                     </div>
 
-                    <div class="form-group" style="min-width: 180px;">
-                        <label for="monthlyBranchFilter">Branch</label>
-                        <select id="monthlyBranchFilter">
+                    <div class="form-group" style="max-width: 170px;">
+                        <label for="reportToDate">To Date</label>
+                        <input type="date" id="reportToDate" />
+                    </div>
+
+                    <div class="form-group" style="max-width: 180px;">
+                        <label for="reportBranch">Branch</label>
+                        <select id="reportBranch">
                             <option value="All">All Branches</option>
                             <option value="Hadapsar">Hadapsar</option>
                             <option value="Loni">Loni</option>
@@ -67,63 +76,74 @@
                         </select>
                     </div>
 
-                    <button type="button" id="viewMonthBtn" class="secondary-btn">Filter Report</button>
-                    <button type="button" id="exportXlsxBtn" class="save-btn" style="background-color: #16a34a; color: white;">Export Excel (.xlsx)</button>
+                    <div style="display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;">
+                        <button type="button" id="loadReportBtn" class="secondary-btn" style="height: 44px;">Generate Report</button>
+                        <button type="button" id="thisMonthBtn" class="clear-btn" style="height: 44px;">This Month</button>
+                        <button type="button" id="lastMonthBtn" class="clear-btn" style="height: 44px;">Last Month</button>
+                        <button type="button" id="exportExcelBtn" class="save-btn" style="height: 44px;">📥 Export Excel</button>
+                    </div>
                 </div>
 
-                <div class="monthly-summary" style="margin-top: 24px; display: flex; gap: 18px; flex-wrap: wrap;">
+                <!-- Summary KPI Cards -->
+                <div class="monthly-summary">
                     <div class="summary-box">
-                        <span>Total Bills Issued</span>
-                        <strong id="monthlyBillCount">0</strong>
+                        <span>Total Sales</span>
+                        <strong id="summaryTotal">₹0.00</strong>
                     </div>
-
                     <div class="summary-box">
-                        <span>Total Revenue</span>
-                        <strong id="monthlyTotal">₹0.00</strong>
+                        <span>Total Bills</span>
+                        <strong id="summaryCount">0</strong>
+                    </div>
+                    <div class="summary-box">
+                        <span>Cash Collection</span>
+                        <strong id="summaryCash">₹0.00</strong>
+                    </div>
+                    <div class="summary-box">
+                        <span>Online / UPI</span>
+                        <strong id="summaryOnline">₹0.00</strong>
                     </div>
                 </div>
             </section>
 
+            <!-- Detailed Data Table -->
             <section class="card">
                 <div class="section-header">
-                    <h2>Transactions & Item Matrix</h2>
+                    <h2>Detailed Uniform Transactions</h2>
+                    <div class="today-summary">
+                        Showing: <strong id="tableRecordCount">0</strong> records
+                    </div>
                 </div>
 
-                <div class="table-container" style="overflow-x: auto;">
-                    <table class="monthly-sales-table">
+                <div class="table-container">
+                    <table id="reportTable">
                         <thead>
                             <tr>
-                                <th>Bill No.</th>
+                                <th>Bill Date</th>
                                 <th>Branch</th>
-                                <th>Transaction ID</th>
-                                <th>Transaction Req Date</th>
-                                <th>Settlement Date</th>
-                                <th>Transaction Amount</th>
-                                <th>SHIRT</th>
-                                <th>HALF PANTS</th>
-                                <th>FULL PANTS</th>
-                                <th>SKIRT</th>
-                                <th>SHOES</th>
-                                <th>SOCKS</th>
-                                <th>BLAZZER</th>
-                                <th>BELT</th>
-                                <th>PT SHIRT</th>
-                                <th>PT PANT</th>
+                                <th>Bill No.</th>
+                                <th>Student Name</th>
+                                <th>Std.</th>
+                                <th>Gender</th>
+                                <th>Payment</th>
+                                <th>Txn ID</th>
+                                <th>Items Breakdown</th>
+                                <th>Total Qty</th>
+                                <th>Total Amount</th>
                             </tr>
                         </thead>
-                        <tbody id="monthlySalesBody"></tbody>
-                        <tfoot id="tableTotalsFooter"></tfoot>
+                        <tbody id="reportBody"></tbody>
                     </table>
+                    <div id="reportEmptyMessage" class="empty-message" style="display: none;">No records found for selected filters.</div>
                 </div>
             </section>
-        </div>
 
-        <footer>
-            <p>© 2026 School Sales Management System • Authenticated User Session</p>
-        </footer>
+            <footer>
+                <p>© 2026 School Sales Portal • Uniform Department Reporting</p>
+            </footer>
+        </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="prices.js"></script>
     <script src="monthly-sales.js"></script>
 </body>
 </html>

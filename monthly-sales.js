@@ -1,11 +1,45 @@
 // ==================================================
-// MONTHLY SALES MATRIX - JAVASCRIPT
+// UNIFORM DEPARTMENT - MONTHLY & RANGE REPORT (monthly-sales.js)
 // ==================================================
-
 const API_BASE_URL = "https://myen97dfp7.execute-api.ap-south-1.amazonaws.com";
 
-// Standalone Authentication Check
-(function checkAuth() {
+// DOM Elements
+const reportFromDate = document.getElementById("reportFromDate");
+const reportToDate = document.getElementById("reportToDate");
+const reportBranch = document.getElementById("reportBranch");
+const loadReportBtn = document.getElementById("loadReportBtn");
+const thisMonthBtn = document.getElementById("thisMonthBtn");
+const lastMonthBtn = document.getElementById("lastMonthBtn");
+const exportExcelBtn = document.getElementById("exportExcelBtn");
+
+const summaryTotal = document.getElementById("summaryTotal");
+const summaryCount = document.getElementById("summaryCount");
+const summaryCash = document.getElementById("summaryCash");
+const summaryOnline = document.getElementById("summaryOnline");
+const tableRecordCount = document.getElementById("tableRecordCount");
+
+const reportBody = document.getElementById("reportBody");
+const reportEmptyMessage = document.getElementById("reportEmptyMessage");
+
+// Individual uniform item breakdown columns for Matrix Export
+const XLSX_COLUMNS = [
+    "SHIRT", "HALF PANTS", "FULL PANTS", "SKIRT", 
+    "SHOES", "SOCKS", "BLAZZER", "BELT", "PT SHIRT", "PT PANT"
+];
+
+let cachedUniformBills = [];
+
+// ==================================================
+// AUTHENTICATION & HEADERS
+// ==================================================
+function handleLogout() {
+    sessionStorage.clear();
+    localStorage.removeItem("cognito_id_token");
+    localStorage.removeItem("selectedBranch");
+    window.location.replace("login.html");
+}
+
+(function enforceAuth() {
     const token = sessionStorage.getItem("cognito_id_token");
     if (!token) return window.location.replace("login.html");
 
@@ -27,9 +61,9 @@ const API_BASE_URL = "https://myen97dfp7.execute-api.ap-south-1.amazonaws.com";
 
         const authBtn = document.getElementById("authBtn");
         if (authBtn) {
-            authBtn.onclick = () => {
-                sessionStorage.removeItem("cognito_id_token");
-                window.location.replace("login.html");
+            authBtn.onclick = (e) => {
+                e.preventDefault();
+                handleLogout();
             };
         }
     } catch {
@@ -37,52 +71,45 @@ const API_BASE_URL = "https://myen97dfp7.execute-api.ap-south-1.amazonaws.com";
     }
 })();
 
-// DOM Elements
-const salesMonth = document.getElementById("salesMonth");
-const monthlyBranchFilter = document.getElementById("monthlyBranchFilter");
-const exportXlsxBtn = document.getElementById("exportXlsxBtn");
-const viewMonthBtn = document.getElementById("viewMonthBtn");
-const monthlySalesBody = document.getElementById("monthlySalesBody");
-const tableTotalsFooter = document.getElementById("tableTotalsFooter");
-const monthlyBillCount = document.getElementById("monthlyBillCount");
-const monthlyTotal = document.getElementById("monthlyTotal");
-
-// Individual item columns
-const XLSX_COLUMNS = [
-    "SHIRT", "HALF PANTS", "FULL PANTS", "SKIRT", 
-    "SHOES", "SOCKS", "BLAZZER", "BELT", "PT SHIRT", "PT PANT"
-];
-
-// Default month setup
-const today = new Date();
-if (salesMonth && !salesMonth.value) {
-    salesMonth.value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+function getAuthHeaders() {
+    const token = sessionStorage.getItem("cognito_id_token");
+    return {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+    };
 }
 
-// Restore branch
-if (monthlyBranchFilter) {
-    const savedBranch = localStorage.getItem("selectedBranch");
-    if (savedBranch) monthlyBranchFilter.value = savedBranch;
+// ==================================================
+// DATE UTILITIES
+// ==================================================
+function formatDate(ds) {
+    if (!ds) return "";
+    const p = ds.split("-");
+    return p.length === 3 ? `${p[2]}-${p[1]}-${p[0]}` : ds;
 }
 
-function formatToExcelDate(dateStr) {
-    if (!dateStr) return "";
-    const parts = dateStr.trim().split("-");
-    if (parts.length !== 3) return dateStr;
-    const year = parts[0];
-    const monthIndex = parseInt(parts[1], 10) - 1;
-    const day = parts[2].padStart(2, "0");
-    const months = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-    return `${day}-${months[monthIndex] || parts[1]}-${year}`;
+function escapeHTML(str) {
+    const div = document.createElement("div");
+    div.textContent = str ?? "";
+    return div.innerHTML;
 }
 
-// Standard check for junior boys wearing Half Pants vs Full Pants
+function setMonthRange(year, monthIndex) {
+    const start = new Date(year, monthIndex, 1);
+    const end = new Date(year, monthIndex + 1, 0);
+
+    reportFromDate.value = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
+    reportToDate.value = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+}
+
+// ==================================================
+// UNIFORM ITEM EXPANSION ENGINE
+// ==================================================
 function isJuniorBoyStandard(std) {
     const juniors = ["NURSERY", "JR. KG.", "SR. KG.", "LKG", "UKG", "I", "II", "III", "IV", "V", "VI", "1ST", "2ND", "3RD", "4TH", "5TH", "6TH"];
     return juniors.includes(String(std || "").trim().toUpperCase());
 }
 
-// Expand grouped uniform items into separate individual items
 function expandBillItems(bill) {
     const expanded = {};
     XLSX_COLUMNS.forEach(col => expanded[col] = 0);
@@ -147,115 +174,118 @@ function expandBillItems(bill) {
     return expanded;
 }
 
-let cachedMatrixRows = [];
+// ==================================================
+// DATA FETCHING & REPORT RENDER
+// ==================================================
+async function loadReport() {
+    const from = reportFromDate.value;
+    const to = reportToDate.value;
+    const branch = reportBranch.value;
 
-async function getPivotedMatrixData() {
-    const selectedMonth = salesMonth ? salesMonth.value : "";
-    const selectedBranch = monthlyBranchFilter ? monthlyBranchFilter.value : "All";
+    if (!from || !to) return alert("Please select both From and To dates.");
+    if (from > to) return alert("From Date cannot be later than To Date.");
 
-    let url = `${API_BASE_URL}/bills?month=${selectedMonth}`;
-    if (selectedBranch !== "All") {
-        url += `&branch=${encodeURIComponent(selectedBranch)}`;
-    }
+    reportBody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 24px;">Generating uniform report...</td></tr>`;
+    if (reportEmptyMessage) reportEmptyMessage.style.display = "none";
+
+    const startMonth = from.slice(0, 7);
+    const endMonth = to.slice(0, 7);
 
     try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Failed to load bills from server.");
-        let bills = await response.json();
+        let bills = [];
 
-        bills = bills.filter(b => !b.department || b.department === "Uniform");
+        // Query start month
+        let url1 = `${API_BASE_URL}/bills?department=Uniform&month=${startMonth}`;
+        if (branch !== "All") url1 += `&branch=${encodeURIComponent(branch)}`;
+        const res1 = await fetch(url1, { headers: getAuthHeaders() });
+        if (res1.ok) bills = await res1.json();
 
-        cachedMatrixRows = bills.map(bill => {
-            const row = {
-                "Bill No.": bill.billNo || "",
-                "Branch": bill.branch || "",
-                "Transaction ID": bill.transactionId || "",
-                "Transaction Req Date": formatToExcelDate(bill.billDate),
-                "Settlement Date": formatToExcelDate(bill.billDate),
-                "Transaction Amount": Number(bill.total) || 0
-            };
+        // If range spans across multiple months
+        if (startMonth !== endMonth) {
+            let url2 = `${API_BASE_URL}/bills?department=Uniform&month=${endMonth}`;
+            if (branch !== "All") url2 += `&branch=${encodeURIComponent(branch)}`;
+            const res2 = await fetch(url2, { headers: getAuthHeaders() });
+            if (res2.ok) {
+                const extra = await res2.json();
+                bills = [...bills, ...extra];
+            }
+        }
 
-            const expanded = expandBillItems(bill);
-            XLSX_COLUMNS.forEach(col => {
-                row[col] = expanded[col] > 0 ? expanded[col] : "";
-            });
+        // Filter exact inclusive range and Uniform department
+        cachedUniformBills = bills.filter(b => (!b.department || b.department === "Uniform") && b.billDate >= from && b.billDate <= to);
 
-            return row;
-        });
+        // Sort descending by date, then bill number
+        cachedUniformBills.sort((a, b) => (b.billDate || "").localeCompare(a.billDate || "") || String(b.billNo).localeCompare(String(a.billNo)));
 
-        return cachedMatrixRows;
+        renderReportTable(cachedUniformBills);
     } catch (err) {
-        console.error("Fetch matrix error:", err);
-        return [];
+        console.error("Uniform report fetch error:", err);
+        reportBody.innerHTML = `<tr><td colspan="11" style="color:red; text-align:center; padding: 20px;">Failed to load report: ${err.message}</td></tr>`;
     }
 }
 
-async function displayMonthlySales() {
-    if (!monthlySalesBody) return;
+function renderReportTable(bills) {
+    reportBody.innerHTML = "";
 
-    monthlySalesBody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding: 24px; color: #64748b;">Loading records from cloud...</td></tr>`;
-    if (tableTotalsFooter) tableTotalsFooter.innerHTML = "";
+    let totalRevenue = 0;
+    let cashRevenue = 0;
+    let onlineRevenue = 0;
 
-    const rows = await getPivotedMatrixData();
-    monthlySalesBody.innerHTML = "";
-
-    if (rows.length === 0) {
-        monthlySalesBody.innerHTML = `
-            <tr>
-                <td colspan="16" style="text-align:center; padding: 30px; color: #94a3b8;">
-                    No uniform bills recorded for ${salesMonth ? salesMonth.value : "this period"}.
-                </td>
-            </tr>
-        `;
-        if (monthlyBillCount) monthlyBillCount.textContent = "0";
-        if (monthlyTotal) monthlyTotal.textContent = "₹0.00";
+    if (bills.length === 0) {
+        if (reportEmptyMessage) reportEmptyMessage.style.display = "block";
+        summaryTotal.textContent = "₹0.00";
+        summaryCount.textContent = "0";
+        summaryCash.textContent = "₹0.00";
+        summaryOnline.textContent = "₹0.00";
+        tableRecordCount.textContent = "0";
         return;
     }
 
-    const totals = { amount: 0 };
-    XLSX_COLUMNS.forEach(col => totals[col] = 0);
+    if (reportEmptyMessage) reportEmptyMessage.style.display = "none";
 
-    rows.forEach(r => {
-        totals.amount += Number(r["Transaction Amount"]) || 0;
-        let itemCells = "";
+    bills.forEach(bill => {
+        const amt = Number(bill.total) || 0;
+        totalRevenue += amt;
+        if (bill.paymentMode === "Online") onlineRevenue += amt;
+        else cashRevenue += amt;
 
-        XLSX_COLUMNS.forEach(col => {
-            const val = r[col];
-            if (val !== "") totals[col] += Number(val);
-            itemCells += `<td>${val !== "" ? val : "-"}</td>`;
-        });
+        let totalQty = 0;
+        const itemBreakdown = (bill.items || []).map(i => {
+            const q = Number(i.quantity) || 0;
+            totalQty += q;
+            return `<div>${escapeHTML(i.name)}${i.size ? ` (${escapeHTML(i.size)})` : ""} × ${q} (₹${(Number(i.amount) || 0).toFixed(2)})</div>`;
+        }).join("");
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
-            <td>${r["Bill No."] || "-"}</td>
-            <td>${r["Branch"] || "-"}</td>
-            <td>${r["Transaction ID"] || "-"}</td>
-            <td>${r["Transaction Req Date"]}</td>
-            <td>${r["Settlement Date"] || "-"}</td>
-            <td>₹${Number(r["Transaction Amount"]).toFixed(2)}</td>
-            ${itemCells}
+            <td>${formatDate(bill.billDate)}</td>
+            <td>${escapeHTML(bill.branch || "-")}</td>
+            <td><strong>${escapeHTML(bill.billNo)}</strong></td>
+            <td><strong>${escapeHTML(bill.studentName || "-")}</strong></td>
+            <td>${escapeHTML(bill.standard)}</td>
+            <td>${escapeHTML(bill.gender || "")}</td>
+            <td>${escapeHTML(bill.paymentMode || "")}</td>
+            <td>${escapeHTML(bill.transactionId || "-")}</td>
+            <td class="item-list">${itemBreakdown}</td>
+            <td>${totalQty}</td>
+            <td><strong>₹${amt.toFixed(2)}</strong></td>
         `;
-        monthlySalesBody.appendChild(tr);
+        reportBody.appendChild(tr);
     });
 
-    if (monthlyBillCount) monthlyBillCount.textContent = rows.length;
-    if (monthlyTotal) monthlyTotal.textContent = `₹${totals.amount.toFixed(2)}`;
-
-    if (tableTotalsFooter) {
-        let footerCells = `
-            <td colspan="5" style="text-align: right;"><strong>Total:</strong></td>
-            <td><strong>₹${totals.amount.toFixed(2)}</strong></td>
-        `;
-        XLSX_COLUMNS.forEach(col => {
-            footerCells += `<td><strong>${totals[col]}</strong></td>`;
-        });
-        tableTotalsFooter.innerHTML = `<tr>${footerCells}</tr>`;
-    }
+    summaryTotal.textContent = `₹${totalRevenue.toFixed(2)}`;
+    summaryCount.textContent = bills.length;
+    summaryCash.textContent = `₹${cashRevenue.toFixed(2)}`;
+    summaryOnline.textContent = `₹${onlineRevenue.toFixed(2)}`;
+    tableRecordCount.textContent = bills.length;
 }
 
-function handleExcelExport() {
-    if (!cachedMatrixRows || cachedMatrixRows.length === 0) {
-        alert("No records found to export for this period.");
+// ==================================================
+// EXCEL MATRIX EXPORT (.XLSX)
+// ==================================================
+function exportUniformXlsx() {
+    if (!cachedUniformBills || cachedUniformBills.length === 0) {
+        alert("No uniform bills to export for this date range.");
         return;
     }
 
@@ -264,42 +294,81 @@ function handleExcelExport() {
         return;
     }
 
+    // Build normalized rows with individual column breakdown
+    const rows = cachedUniformBills.map(bill => {
+        const row = {
+            "Bill No.": bill.billNo || "",
+            "Branch": bill.branch || "",
+            "Student Name": bill.studentName || "",
+            "Standard": bill.standard || "",
+            "Gender": bill.gender || "",
+            "Payment Mode": bill.paymentMode || "",
+            "Transaction ID": bill.transactionId || "",
+            "Bill Date": formatDate(bill.billDate),
+            "Total Amount": Number(bill.total) || 0
+        };
+
+        const expanded = expandBillItems(bill);
+        XLSX_COLUMNS.forEach(col => {
+            row[col] = expanded[col] > 0 ? expanded[col] : "";
+        });
+
+        return row;
+    });
+
+    // Summary calculation rows
     const emptyRow = {};
     const labelRow = { 
-        "Bill No.": "", "Branch": "", "Transaction ID": "", 
-        "Transaction Req Date": "", "Settlement Date": "", "Transaction Amount": "" 
-    };
-    const totalRow = { 
-        "Bill No.": "Total", "Branch": "", "Transaction ID": "", 
-        "Transaction Req Date": "", "Settlement Date": "", 
-        "Transaction Amount": cachedMatrixRows.reduce((sum, r) => sum + (Number(r["Transaction Amount"]) || 0), 0)
+        "Bill No.": "", "Branch": "", "Student Name": "", "Standard": "", 
+        "Gender": "", "Payment Mode": "", "Transaction ID": "", 
+        "Bill Date": "TOTAL QUANTITIES:", "Total Amount": cachedUniformBills.reduce((sum, b) => sum + (Number(b.total) || 0), 0)
     };
 
     XLSX_COLUMNS.forEach(col => {
-        labelRow[col] = col;
-        totalRow[col] = cachedMatrixRows.reduce((sum, r) => sum + (Number(r[col]) || 0), 0);
+        let colTotal = 0;
+        cachedUniformBills.forEach(b => {
+            const exp = expandBillItems(b);
+            colTotal += exp[col] || 0;
+        });
+        labelRow[col] = colTotal;
     });
 
-    const exportData = [...cachedMatrixRows, emptyRow, labelRow, totalRow];
+    const exportData = [...rows, emptyRow, labelRow];
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Monthly Uniform Sales");
-    XLSX.writeFile(workbook, `${salesMonth.value || "Monthly"}-Uniform-Sales-Matrix.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Uniform Sales Matrix");
+
+    const fileName = `Uniform_Sales_${reportFromDate.value}_to_${reportToDate.value}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
 }
 
-// Event Listeners
-if (monthlyBranchFilter) {
-    monthlyBranchFilter.addEventListener("change", () => {
-        if (monthlyBranchFilter.value !== "All") {
-            localStorage.setItem("selectedBranch", monthlyBranchFilter.value);
-        }
-        displayMonthlySales();
-    });
+// ==================================================
+// EVENT LISTENERS & INIT
+// ==================================================
+loadReportBtn?.addEventListener("click", loadReport);
+exportExcelBtn?.addEventListener("click", exportUniformXlsx);
+
+thisMonthBtn?.addEventListener("click", () => {
+    const d = new Date();
+    setMonthRange(d.getFullYear(), d.getMonth());
+    loadReport();
+});
+
+lastMonthBtn?.addEventListener("click", () => {
+    const d = new Date();
+    setMonthRange(d.getFullYear(), d.getMonth() - 1);
+    loadReport();
+});
+
+reportBranch?.addEventListener("change", loadReport);
+
+// Init with current month range
+const d = new Date();
+setMonthRange(d.getFullYear(), d.getMonth());
+
+const savedBranch = localStorage.getItem("selectedBranch");
+if (savedBranch && reportBranch) {
+    reportBranch.value = savedBranch;
 }
 
-if (salesMonth) salesMonth.addEventListener("change", displayMonthlySales);
-if (viewMonthBtn) viewMonthBtn.addEventListener("click", displayMonthlySales);
-if (exportXlsxBtn) exportXlsxBtn.addEventListener("click", handleExcelExport);
-
-// Initial Load
-displayMonthlySales();
+loadReport();
