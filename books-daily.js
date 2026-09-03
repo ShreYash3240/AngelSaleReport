@@ -8,6 +8,7 @@ const bookBillForm = document.getElementById("bookBillForm");
 const branch = document.getElementById("branch");
 const billDate = document.getElementById("billDate");
 const billNo = document.getElementById("billNo");
+const studentName = document.getElementById("studentName");
 const standard = document.getElementById("standard");
 const paymentMode = document.getElementById("paymentMode");
 const transactionIdGroup = document.getElementById("transactionIdGroup");
@@ -337,6 +338,7 @@ async function fetchAndDisplayTodayBills() {
                     <td>${formatDate(bill.billDate)}</td>
                     <td>${escapeHTML(bill.branch || "-")}</td>
                     <td>${escapeHTML(bill.billNo)}</td>
+                    <td><strong>${escapeHTML(bill.studentName || "-")}</strong></td>
                     <td>${escapeHTML(bill.standard)}</td>
                     <td>${escapeHTML(bill.paymentMode || "")}</td>
                     <td>${escapeHTML(bill.transactionId || "-")}</td>
@@ -455,6 +457,7 @@ bookBillForm?.addEventListener("submit", async (e) => {
         branch: branch.value.trim(),
         billDate: billDate.value.trim(),
         billNo: billNo.value.trim(),
+        studentName: studentName.value.trim(),
         standard: standard.value.trim(),
         paymentMode: paymentMode.value.trim(),
         transactionId: isOnline ? transactionId.value.trim() : "",
