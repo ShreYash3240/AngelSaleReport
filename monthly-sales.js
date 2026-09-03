@@ -1,9 +1,47 @@
 // ==================================================
-// MONTHLY SALES MATRIX - JAVASCRIPT (AWS CLOUD INTEGRATED)
+// MONTHLY SALES MATRIX - JAVASCRIPT
 // ==================================================
 
 const API_BASE_URL = "https://myen97dfp7.execute-api.ap-south-1.amazonaws.com";
 
+// 1. Standalone Authentication Check
+(function checkAuth() {
+    const token = sessionStorage.getItem("cognito_id_token");
+    if (!token) {
+        window.location.replace("login.html");
+        return;
+    }
+
+    try {
+        const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const json = decodeURIComponent(atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+        const payload = JSON.parse(json);
+
+        if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
+            sessionStorage.removeItem("cognito_id_token");
+            window.location.replace("login.html");
+            return;
+        }
+
+        const emailDisplay = document.getElementById("userEmailDisplay");
+        if (emailDisplay) emailDisplay.textContent = payload.name || payload.email || "Accountant";
+
+        const container = document.getElementById("appContainer");
+        if (container) container.style.display = "block";
+
+        const authBtn = document.getElementById("authBtn");
+        if (authBtn) {
+            authBtn.onclick = () => {
+                sessionStorage.removeItem("cognito_id_token");
+                window.location.replace("login.html");
+            };
+        }
+    } catch {
+        window.location.replace("login.html");
+    }
+})();
+
+// DOM Elements
 const salesMonth = document.getElementById("salesMonth");
 const monthlyBranchFilter = document.getElementById("monthlyBranchFilter");
 const exportXlsxBtn = document.getElementById("exportXlsxBtn");
@@ -13,7 +51,6 @@ const tableTotalsFooter = document.getElementById("tableTotalsFooter");
 const monthlyBillCount = document.getElementById("monthlyBillCount");
 const monthlyTotal = document.getElementById("monthlyTotal");
 
-// Matrix columns strictly matching billing items
 const XLSX_COLUMNS = [
     "SHIRT & PANT", "SHIRT & SKIRT", "BLAZZER", 
     "SHOES & SOCKS", "ONLY SOCKS", "BELT", "PT SHIRT", "PT PANT"
@@ -42,7 +79,6 @@ function formatToExcelDate(dateStr) {
     return `${day}-${months[monthIndex] || parts[1]}-${year}`;
 }
 
-// Map bill line items into the flat matrix row
 function expandBillItems(bill) {
     const expanded = {};
     XLSX_COLUMNS.forEach(col => expanded[col] = 0);
@@ -52,7 +88,6 @@ function expandBillItems(bill) {
         const qty = Number(item.quantity) || 0;
         if (qty <= 0) return;
 
-        // Legacy / set mapping
         if (name === "SET" || name === "UNIFORM SET") {
             const isGirl = (bill.gender || "").toUpperCase() === "GIRLS" || (bill.gender || "").toUpperCase() === "GIRL";
             if (isGirl) {
@@ -69,23 +104,25 @@ function expandBillItems(bill) {
     return expanded;
 }
 
-// In-memory cache to prevent double-fetching on Excel download
 let cachedMatrixRows = [];
 
-// Fetch uniform bills from AWS API Gateway
 async function getPivotedMatrixData() {
     const selectedMonth = salesMonth ? salesMonth.value : "";
     const selectedBranch = monthlyBranchFilter ? monthlyBranchFilter.value : "All";
 
-    let url = `${API_BASE_URL}/bills?department=Uniform&month=${selectedMonth}`;
+    // Fallback: If department query returns empty, query without department to support legacy records
+    let url = `${API_BASE_URL}/bills?month=${selectedMonth}`;
     if (selectedBranch !== "All") {
         url += `&branch=${encodeURIComponent(selectedBranch)}`;
     }
 
     try {
         const response = await fetch(url);
-        if (!response.ok) throw new Error("Failed to load bills from server.");
-        const bills = await response.json();
+        if (!response.ok) throw new Error("Failed to fetch bills from server");
+        let bills = await response.json();
+
+        // Filter for Uniform records only
+        bills = bills.filter(b => !b.department || b.department === "Uniform");
 
         cachedMatrixRows = bills.map(bill => {
             const row = {
@@ -112,11 +149,10 @@ async function getPivotedMatrixData() {
     }
 }
 
-// Render Table and Summary Cards
 async function displayMonthlySales() {
     if (!monthlySalesBody) return;
 
-    monthlySalesBody.innerHTML = `<tr><td colspan="14" style="text-align:center; padding: 20px;">Loading records from cloud...</td></tr>`;
+    monthlySalesBody.innerHTML = `<tr><td colspan="14" style="text-align:center; padding: 24px; color: #64748b;">Loading records from cloud...</td></tr>`;
     if (tableTotalsFooter) tableTotalsFooter.innerHTML = "";
 
     const rows = await getPivotedMatrixData();
@@ -125,8 +161,8 @@ async function displayMonthlySales() {
     if (rows.length === 0) {
         monthlySalesBody.innerHTML = `
             <tr>
-                <td colspan="14" class="empty-message">
-                    No uniform bills recorded for ${salesMonth.value || "this month"}.
+                <td colspan="14" style="text-align:center; padding: 30px; color: #94a3b8;">
+                    No uniform bills recorded for ${salesMonth ? salesMonth.value : "this period"}.
                 </td>
             </tr>
         `;
@@ -161,11 +197,9 @@ async function displayMonthlySales() {
         monthlySalesBody.appendChild(tr);
     });
 
-    // Update KPI Card summary
     if (monthlyBillCount) monthlyBillCount.textContent = rows.length;
     if (monthlyTotal) monthlyTotal.textContent = `₹${totals.amount.toFixed(2)}`;
 
-    // Build Table Footer
     if (tableTotalsFooter) {
         let footerCells = `
             <td colspan="5" style="text-align: right;"><strong>Total:</strong></td>
@@ -178,17 +212,14 @@ async function displayMonthlySales() {
     }
 }
 
-// Download Excel (.xlsx) handler
-async function handleExcelExport() {
-    const rows = cachedMatrixRows.length > 0 ? cachedMatrixRows : await getPivotedMatrixData();
-
-    if (rows.length === 0) {
-        alert("No records found to export for the selected period.");
+function handleExcelExport() {
+    if (!cachedMatrixRows || cachedMatrixRows.length === 0) {
+        alert("No records found to export for this period.");
         return;
     }
 
     if (typeof XLSX === "undefined") {
-        alert("Excel export library is not loaded. Please ensure internet access to the SheetJS CDN.");
+        alert("Excel export library is still loading or unavailable. Please check your network.");
         return;
     }
 
@@ -200,15 +231,15 @@ async function handleExcelExport() {
     const totalRow = { 
         "Bill No.": "Total", "Branch": "", "Transaction ID": "", 
         "Transaction Req Date": "", "Settlement Date": "", 
-        "Transaction Amount": rows.reduce((sum, r) => sum + (Number(r["Transaction Amount"]) || 0), 0)
+        "Transaction Amount": cachedMatrixRows.reduce((sum, r) => sum + (Number(r["Transaction Amount"]) || 0), 0)
     };
 
     XLSX_COLUMNS.forEach(col => {
         labelRow[col] = col;
-        totalRow[col] = rows.reduce((sum, r) => sum + (Number(r[col]) || 0), 0);
+        totalRow[col] = cachedMatrixRows.reduce((sum, r) => sum + (Number(r[col]) || 0), 0);
     });
 
-    const exportData = [...rows, emptyRow, labelRow, totalRow];
+    const exportData = [...cachedMatrixRows, emptyRow, labelRow, totalRow];
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Monthly Uniform Sales");
