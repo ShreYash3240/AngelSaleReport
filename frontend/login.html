@@ -4,12 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>School Sales Portal | Sign In</title>
-  <!-- Cache buster ?v=2.0 guarantees the browser loads the new CSS -->
-  <link rel="stylesheet" href="css/login.css?v=2.0" />
+  <!-- Root-relative path + cache buster guarantees it loads -->
+  <link rel="stylesheet" href="/css/login.css?v=2.5" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/images/school logo.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/school logo.png" />
 </head>
 <body>
   <!-- Ambient Gradient Background Blobs -->
@@ -25,7 +25,7 @@
       </div>
       
       <div class="school-brand-box">
-        <img src="assets/images/school logo.png" alt="School Crest" class="login-logo" />
+        <img src="/assets/images/school logo.png" alt="School Crest" class="login-logo" />
         <h1>Angel High School</h1>
       </div>
 
@@ -54,7 +54,6 @@
     const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
     const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
 
-    // Direct Google bypass: jumps straight to Google with zero intermediary screen
     document.getElementById("googleLoginBtn").addEventListener("click", () => {
       const directGoogleLoginUrl = `${COGNITO_AUTH_DOMAIN}/oauth2/authorize?identity_provider=Google&client_id=${COGNITO_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
       window.location.href = directGoogleLoginUrl;
