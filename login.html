@@ -47,14 +47,13 @@
     const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
     const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
 
-    // Appended prompt=select_account to force the Google account selection screen
+    // Direct Google bypass: jumps straight to Google with zero middle page
     document.getElementById("googleLoginBtn").addEventListener("click", () => {
-      // Option A: Removing identity_provider=Google lets Cognito handle session prompts
-      const loginUrl = `${COGNITO_AUTH_DOMAIN}/oauth2/authorize?client_id=${COGNITO_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+      const directGoogleLoginUrl = `${COGNITO_AUTH_DOMAIN}/oauth2/authorize?identity_provider=Google&client_id=${COGNITO_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
       
-      window.location.href = loginUrl;
+      window.location.href = directGoogleLoginUrl;
     });
-
   </script>
+
 </body>
 </html>
