@@ -11,12 +11,10 @@
   <link rel="icon" type="image/png" sizes="32x32" href="school logo.png" />
 </head>
 <body>
-  <!-- Ambient background glow elements -->
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
   <div class="blob blob-3"></div>
 
-  <!-- Glassmorphism Card -->
   <main class="login-card">
     <div class="card-header">
       <div class="brand-badge">
@@ -49,9 +47,9 @@
     const COGNITO_CLIENT_ID = "2p6l3k2tpv751025t3qmmee1to";
     const REDIRECT_URI = "https://main.d2gnewcvmz76ap.amplifyapp.com/index.html";
 
-    // Direct Google bypass: jumps straight to Google account chooser
+    // Appended prompt=select_account to force the Google account selection screen
     document.getElementById("googleLoginBtn").addEventListener("click", () => {
-      const loginUrl = `${COGNITO_AUTH_DOMAIN}/oauth2/authorize?identity_provider=Google&client_id=${COGNITO_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+      const loginUrl = `${COGNITO_AUTH_DOMAIN}/oauth2/authorize?identity_provider=Google&client_id=${COGNITO_CLIENT_ID}&response_type=token&scope=email+openid+profile&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&prompt=select_account`;
       window.location.href = loginUrl;
     });
   </script>
