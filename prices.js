@@ -61,3 +61,19 @@ const UNIFORM_PRICE_MATRIX = {
     "GIRLS": { "SET": 4000, "SHIRT & SKIRT": 1600,"BLAZZER": 1600, "SHOES & SOCKS": 1000, "ONLY SOCKS": 80, "BELT": 100 }
   }
 };
+
+// 2. PT Uniform Price Matrix (By Size Only)
+const PT_UNIFORM_PRICE_MATRIX = {
+  "24": { "PT SHIRT": 420, "PT PANT": 450 },
+  "26": { "PT SHIRT": 430, "PT PANT": 460 },
+  "28": { "PT SHIRT": 440, "PT PANT": 480 },
+  "30": { "PT SHIRT": 440, "PT PANT": 500 },
+  "32": { "PT SHIRT": 450, "PT PANT": 520 },
+  "34": { "PT SHIRT": 460, "PT PANT": 530 },
+  "36": { "PT SHIRT": 470, "PT PANT": 550 },
+  "38": { "PT SHIRT": 480, "PT PANT": 570 },
+  "40": { "PT SHIRT": 490, "PT PANT": 580 },
+  "42": { "PT SHIRT": 500, "PT PANT": 600 },
+  "44": { "PT SHIRT": 510, "PT PANT": 620 },
+  "46": { "PT SHIRT": 550, "PT PANT": 650 }
+};

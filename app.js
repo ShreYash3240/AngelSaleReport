@@ -25,10 +25,7 @@ const todayBillCount = document.getElementById("todayBillCount");
 const todayTotal = document.getElementById("todayTotal");
 const todayBranchFilter = document.getElementById("todayBranchFilter");
 
-const UNIFORM_ITEMS = [
-    "SET", "SHIRT, PANT/SKIRT", "BLAZZER", 
-    "SHOES & SOCKS", "ONLY SOCKS", "BELT"
-];
+const PT_SIZES = ["24", "26", "28", "30", "32", "34", "36", "38", "40", "42", "44", "46"];
 
 // ==================================================
 // COGNITO AUTHENTICATION
@@ -83,44 +80,68 @@ enforceAuthentication();
 // ==================================================
 // PRICING LOOKUP (MATRIX DRIVEN)
 // ==================================================
-function getItemUnitPrice(itemName) {
+function getAvailableUniformItems() {
+    const gen = gender.value.trim();
+    const specificItem = (gen === "GIRLS") ? "SHIRT & SKIRT" : "SHIRT & PANT";
+    return [
+        "SET", 
+        specificItem, 
+        "BLAZZER", 
+        "SHOES & SOCKS", 
+        "ONLY SOCKS", 
+        "BELT", 
+        "PT SHIRT", 
+        "PT PANT"
+    ];
+}
+
+function getItemUnitPrice(itemName, size = "") {
+    if (!itemName) return 0;
+
+    // 1. PT Uniform: Price based purely on Size
+    if (itemName === "PT SHIRT" || itemName === "PT PANT") {
+        if (!size) return 0;
+        return PT_UNIFORM_PRICE_MATRIX[size]?.[itemName] ?? 0;
+    }
+
+    // 2. Regular Uniform: Price based on Std & Gender
     const std = standard.value.trim();
     const gen = gender.value.trim();
-    if (!std || !gen || !itemName) return 0;
+    if (!std || !gen) return 0;
 
-    if (typeof UNIFORM_PRICE_MATRIX !== "undefined" && UNIFORM_PRICE_MATRIX[std]?.[gen]) {
-        return UNIFORM_PRICE_MATRIX[std][gen][itemName] ?? 0;
-    }
-    return 0;
+    return UNIFORM_PRICE_MATRIX[std]?.[gen]?.[itemName] ?? 0;
 }
 
 // ==================================================
 // DYNAMIC ROWS & CALCULATIONS
 // ==================================================
-function getAvailableUniformItems() {
-    const gen = gender.value.trim();
-    const specificItem = (gen === "GIRLS") ? "SHIRT & SKIRT" : "SHIRT & PANT";
-    return ["SET", specificItem, "BLAZZER", "SHOES & SOCKS", "ONLY SOCKS", "BELT"];
-}
-
 function createItemRow() {
     const row = document.createElement("div");
     row.className = "item-row";
 
+    // Item selector
     const select = document.createElement("select");
     select.className = "item-name";
     select.required = true;
-    
     const items = getAvailableUniformItems();
     select.innerHTML = `<option value="">Select Item</option>` + 
         items.map(i => `<option value="${i}">${i}</option>`).join("");
 
+    // Size selector (applicable to PT Uniform)
+    const sizeSelect = document.createElement("select");
+    sizeSelect.className = "item-size";
+    sizeSelect.disabled = true;
+    sizeSelect.innerHTML = `<option value="">-</option>` + 
+        PT_SIZES.map(s => `<option value="${s}">${s}</option>`).join("");
+
+    // Quantity selector
     const qty = document.createElement("select");
     qty.className = "item-qty";
     qty.required = true;
     qty.innerHTML = `<option value="">Qty.</option>` + 
         Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
 
+    // Amount output
     const amt = document.createElement("input");
     amt.type = "number";
     amt.className = "item-amount";
@@ -129,16 +150,16 @@ function createItemRow() {
     amt.placeholder = "Amount";
     amt.required = true;
 
+    // Remove row button
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "remove-item-btn";
     removeBtn.title = "Remove item";
     removeBtn.textContent = "×";
 
-    row.append(select, qty, amt, removeBtn);
+    row.append(select, sizeSelect, qty, amt, removeBtn);
     return row;
 }
-
 
 function addItemRow() {
     itemsContainer.appendChild(createItemRow());
@@ -149,13 +170,31 @@ function syncAndRecalculateItems() {
     const rows = itemsContainer.querySelectorAll(".item-row");
     rows.forEach(row => {
         const itemSelect = row.querySelector(".item-name");
+        const sizeSelect = row.querySelector(".item-size");
         const qtySelect = row.querySelector(".item-qty");
         const amtInput = row.querySelector(".item-amount");
 
-        if (!itemSelect || !qtySelect || !amtInput) return;
+        if (!itemSelect || !sizeSelect || !qtySelect || !amtInput) return;
 
         const item = itemSelect.value;
-        const unitPrice = getItemUnitPrice(item);
+        const isPT = (item === "PT SHIRT" || item === "PT PANT");
+
+        // Toggle size dropdown based on whether it is PT Uniform
+        if (isPT) {
+            sizeSelect.disabled = false;
+            sizeSelect.required = true;
+            if (sizeSelect.value === "") {
+                sizeSelect.options[0].textContent = "Size *";
+            }
+        } else {
+            sizeSelect.disabled = true;
+            sizeSelect.required = false;
+            sizeSelect.value = "";
+            sizeSelect.options[0].textContent = "-";
+        }
+
+        const size = sizeSelect.value;
+        const unitPrice = getItemUnitPrice(item, size);
 
         if (unitPrice > 0 && !qtySelect.value) {
             qtySelect.value = "1";
@@ -172,6 +211,9 @@ function syncAndRecalculateItems() {
                 alert(`Blazzer is not applicable for ${standard.value} (${gender.value})`);
                 itemSelect.value = "";
                 amtInput.value = "";
+            } else if (isPT && !size) {
+                amtInput.value = "";
+                amtInput.title = "Select size to calculate price";
             } else {
                 amtInput.readOnly = false;
                 amtInput.title = "Manual pricing";
@@ -263,7 +305,7 @@ async function fetchAndDisplayTodayBills() {
                 totalSales += Number(bill.total) || 0;
                 const tr = document.createElement("tr");
 
-                const itemNames = (bill.items || []).map(i => `<div>${escapeHTML(i.name)}</div>`).join("");
+                const itemNames = (bill.items || []).map(i => `<div>${escapeHTML(i.name)}${i.size ? ` (Size: ${i.size})` : ""}</div>`).join("");
                 const itemQtys  = (bill.items || []).map(i => `<div>${Number(i.quantity) || 0}</div>`).join("");
                 const itemAmts  = (bill.items || []).map(i => `<div>₹${(Number(i.amount) || 0).toFixed(2)}</div>`).join("");
 
@@ -326,6 +368,7 @@ todayBranchFilter?.addEventListener("change", () => {
 });
 
 standard?.addEventListener("change", syncAndRecalculateItems);
+
 gender?.addEventListener("change", () => {
     const rows = itemsContainer.querySelectorAll(".item-row");
     const items = getAvailableUniformItems();
@@ -337,7 +380,6 @@ gender?.addEventListener("change", () => {
         select.innerHTML = `<option value="">Select Item</option>` + 
             items.map(i => `<option value="${i}">${i}</option>`).join("");
 
-        // Auto-switch between Pant and Skirt if already selected
         if (prevVal === "SHIRT & PANT" && gender.value === "GIRLS") {
             select.value = "SHIRT & SKIRT";
         } else if (prevVal === "SHIRT & SKIRT" && gender.value === "BOYS") {
@@ -349,12 +391,17 @@ gender?.addEventListener("change", () => {
 
     syncAndRecalculateItems();
 });
+
 paymentMode?.addEventListener("change", handlePaymentMode);
 addItemBtn?.addEventListener("click", addItemRow);
 clearBtn?.addEventListener("click", clearForm);
 
 itemsContainer?.addEventListener("change", (e) => {
-    if (e.target.classList.contains("item-name") || e.target.classList.contains("item-qty")) {
+    if (
+        e.target.classList.contains("item-name") || 
+        e.target.classList.contains("item-size") || 
+        e.target.classList.contains("item-qty")
+    ) {
         syncAndRecalculateItems();
     }
 });
@@ -393,13 +440,24 @@ billForm?.addEventListener("submit", async (e) => {
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         const name = row.querySelector(".item-name").value;
+        const size = row.querySelector(".item-size").value;
         const qty = parseInt(row.querySelector(".item-qty").value, 10);
         const amt = parseFloat(row.querySelector(".item-amount").value);
 
         if (!name || isNaN(qty) || isNaN(amt)) {
             return alert(`Row ${i + 1}: Please complete all item fields.`);
         }
-        items.push({ name, quantity: qty, unitPrice: getItemUnitPrice(name), amount: amt });
+        if ((name === "PT SHIRT" || name === "PT PANT") && !size) {
+            return alert(`Row ${i + 1} (${name}): Please select a size.`);
+        }
+
+        items.push({
+            name,
+            size: size || undefined,
+            quantity: qty,
+            unitPrice: getItemUnitPrice(name, size),
+            amount: amt
+        });
     }
 
     const total = items.reduce((sum, item) => sum + item.amount, 0);
