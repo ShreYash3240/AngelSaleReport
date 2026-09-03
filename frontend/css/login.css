@@ -100,6 +100,31 @@ body {
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.06));
 }
 
+/* Minimal School Brand Header */
+.school-brand-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 12px 0 6px 0;
+}
+
+/* Scaled-down minimal logo badge */
+.login-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.08));
+}
+
+.card-header h1 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
 .card-header {
   display: flex;
   flex-direction: column;
