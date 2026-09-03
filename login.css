@@ -15,112 +15,137 @@ body {
   position: relative;
   overflow: hidden;
   padding: 20px;
+  /* Soft academic grid */
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(254, 243, 199, 0.5) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(219, 234, 254, 0.6) 0%, transparent 45%),
+    linear-gradient(to right, rgba(226, 232, 240, 0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(226, 232, 240, 0.4) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
 }
 
-/* Ambient dynamic pastel background lighting for light mode */
+/* Ambient glow */
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px);
+  filter: blur(100px);
   z-index: 0;
-  opacity: 0.65;
+  opacity: 0.55;
   pointer-events: none;
 }
 
 .blob-1 {
-  width: 420px;
-  height: 420px;
-  background: #bfdbfe; /* Soft blue */
-  top: -90px;
-  left: -70px;
+  width: 400px;
+  height: 400px;
+  background: #bfdbfe; /* School Blue */
+  top: -80px;
+  left: -80px;
 }
 
 .blob-2 {
-  width: 460px;
-  height: 460px;
-  background: #c7d2fe; /* Soft indigo */
-  bottom: -110px;
-  right: -90px;
+  width: 420px;
+  height: 420px;
+  background: #fde68a; /* School Gold */
+  bottom: -100px;
+  right: -80px;
 }
 
 .blob-3 {
-  width: 300px;
-  height: 300px;
-  background: #bae6fd; /* Soft sky blue */
+  width: 280px;
+  height: 280px;
+  background: #fed7aa; /* Warm Sunrise */
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
-/* Clean Frosted Light Card Container */
+/* School Shield Glass Card */
 .login-card {
   position: relative;
   z-index: 10;
   width: 100%;
   max-width: 430px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  padding: 40px 32px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 22px;
+  padding: 40px 34px;
   box-shadow: 
-    0 10px 25px -5px rgba(15, 23, 42, 0.08),
-    0 8px 10px -6px rgba(15, 23, 42, 0.04),
-    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    0 16px 36px -6px rgba(15, 23, 42, 0.08),
+    0 4px 12px -2px rgba(15, 23, 42, 0.04);
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 26px;
+  text-align: center;
+}
+
+.login-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 22px 22px 0 0;
+  background: linear-gradient(90deg, #1d4ed8 0%, #f59e0b 50%, #ef4444 100%);
+}
+
+.school-logo-img {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  margin: 0 auto 4px auto;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.06));
 }
 
 .card-header {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .brand-badge {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
+  gap: 6px;
+  padding: 4px 12px;
   background: #eff6ff;
-  border: 1px solid #dbeafe;
+  border: 1px solid #bfdbfe;
   border-radius: 100px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: #2563eb;
-  width: fit-content;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1d4ed8;
+  margin: 0 auto;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .badge-dot {
-  width: 7px;
-  height: 7px;
-  background: #2563eb;
+  width: 6px;
+  height: 6px;
+  background: #1d4ed8;
   border-radius: 50%;
-  box-shadow: 0 0 6px rgba(37, 99, 235, 0.6);
 }
 
 h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 1.45rem;
+  font-weight: 800;
   color: #0f172a;
+  letter-spacing: -0.01em;
 }
 
 .subtitle {
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 0.88rem;
   color: #64748b;
+  line-height: 1.4;
 }
 
-/* Modern Google CTA */
 .action-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .google-btn {
@@ -131,27 +156,26 @@ h1 {
   gap: 12px;
   padding: 13px 20px;
   border-radius: 12px;
-  border: 1px solid #cbd5e1;
+  border: 1.5px solid #cbd5e1;
   background: #ffffff;
-  color: #1e293b;
-  font-size: 0.95rem;
-  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.94rem;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04);
 }
 
 .google-btn:hover {
-  transform: translateY(-1px);
-  background: #f8fafc;
-  border-color: #94a3b8;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  transform: translateY(-2px);
+  background: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: 0 8px 20px rgba(29, 78, 216, 0.12);
 }
 
 .google-btn:active {
   transform: translateY(0);
-  background: #f1f5f9;
 }
 
 .google-icon {
@@ -160,41 +184,21 @@ h1 {
   flex-shrink: 0;
 }
 
-/* Card footer text */
 .card-footer {
-  text-align: center;
   border-top: 1px solid #f1f5f9;
-  padding-top: 18px;
+  padding-top: 16px;
 }
 
 .card-footer p {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   color: #94a3b8;
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
-/* Mobile Responsiveness */
 @media (max-width: 480px) {
-  body {
-    padding: 16px;
-  }
-
   .login-card {
-    padding: 30px 22px;
-    gap: 24px;
-    border-radius: 16px;
-  }
-
-  h1 {
-    font-size: 1.5rem;
-  }
-
-  .subtitle {
-    font-size: 0.85rem;
-  }
-
-  .google-btn {
-    padding: 12px 16px;
-    font-size: 0.9rem;
+    padding: 30px 20px;
   }
 }
