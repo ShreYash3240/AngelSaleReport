@@ -36,7 +36,7 @@ function handleLogout() {
     sessionStorage.clear();
     localStorage.removeItem("cognito_id_token");
     localStorage.removeItem("selectedBranch");
-    window.location.replace("login.html");
+    window.location.replace("/login.html");
 }
 
 (function enforceAuthentication() {
@@ -50,12 +50,12 @@ function handleLogout() {
     }
 
     const token = sessionStorage.getItem("cognito_id_token");
-    if (!token) return window.location.replace("login.html");
+    if (!token) return window.location.replace("/login.html");
 
     const payload = parseJwt(token);
     if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
         sessionStorage.removeItem("cognito_id_token");
-        return window.location.replace("login.html");
+        return window.location.replace("/login.html");
     }
 
     const emailDisplay = document.getElementById("userEmailDisplay");
@@ -140,7 +140,7 @@ function createItemRow() {
     amt.className = "item-amount";
     amt.min = "0";
     amt.step = "0.01";
-    amt.placeholder = "Amount";
+    amt.placeholder = "0.00";
     amt.required = true;
 
     const removeBtn = document.createElement("button");
