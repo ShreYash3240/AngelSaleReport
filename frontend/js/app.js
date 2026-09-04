@@ -338,18 +338,18 @@ function showDigitalReceiptSlip(bill) {
             const sizeStr = item.size ? ` (${item.size})` : "";
             rowsHtml += `
                 <tr style="height: 22px;">
-                    <td style="width: 30px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.68rem; padding: 3px 2px; vertical-align: middle; box-sizing: border-box;">${i + 1}</td>
-                    <td style="width: 170px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; padding: 3px 4px; font-weight: 600; font-size: 0.68rem; word-break: break-word; white-space: normal; line-height: 1.1; vertical-align: middle; box-sizing: border-box;">${item.name}${sizeStr}</td>
-                    <td style="width: 40px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.7rem; padding: 3px 2px; vertical-align: middle; box-sizing: border-box;">${item.quantity || 1}</td>
-                    <td style="width: 60px; border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.72rem; padding: 3px 4px; vertical-align: middle; box-sizing: border-box;">${Number(item.amount || 0)}</td>
+                    <td style="width: 10px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.68rem; padding: 3px 2px; vertical-align: middle; box-sizing: border-box;">${i + 1}</td>
+                    <td style="width: 50px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; padding: 3px 4px; font-weight: 600; font-size: 0.68rem; word-break: break-word; white-space: normal; line-height: 1.1; vertical-align: middle; box-sizing: border-box;">${item.name}${sizeStr}</td>
+                    <td style="width: 10px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.7rem; padding: 3px 2px; vertical-align: middle; box-sizing: border-box;">${item.quantity || 1}</td>
+                    <td style="width: 20px; border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.72rem; padding: 3px 4px; vertical-align: middle; box-sizing: border-box;">${Number(item.amount || 0)}</td>
                 </tr>`;
         } else {
             rowsHtml += `
                 <tr style="height: 22px;">
-                    <td style="width: 30px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                    <td style="width: 170px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                    <td style="width: 40px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                    <td style="width: 60px; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                    <td style="width: 10px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                    <td style="width: 50px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                    <td style="width: 10px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                    <td style="width: 20px; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
                 </tr>`;
         }
     }
@@ -384,13 +384,13 @@ function showDigitalReceiptSlip(bill) {
                 <span style="font-weight: bold; white-space: nowrap;">Std : </span>
                 <span style="border-bottom: 1px solid #000; flex-grow: 1; margin-left: 4px; padding-left: 2px; font-weight: 600;">${bill.standard || ""}</span>
             </div>
-            <table style="width: 300px; table-layout: fixed; border-collapse: collapse; border: 1.2px solid #000; font-size: 0.72rem; box-sizing: border-box; margin: 0 auto;">
+            <table style="table-layout: fixed; border-collapse: collapse; border: 1.2px solid #000; font-size: 0.72rem; box-sizing: border-box; margin: 0 auto;">
                 <thead>
                     <tr style="border-bottom: 1.2px solid #000;">
-                        <th style="width: 30px; border-right: 1.2px solid #000; padding: 3px 2px; text-align: center; font-weight: bold; box-sizing: border-box;">SR.</th>
-                        <th style="width: 170px; border-right: 1.2px solid #000; padding: 3px 4px; text-align: left; font-weight: bold; box-sizing: border-box;">PARTICULARS</th>
-                        <th style="width: 40px; border-right: 1.2px solid #000; padding: 3px 2px; text-align: center; font-weight: bold; box-sizing: border-box;">QTY</th>
-                        <th style="width: 60px; padding: 3px 4px; text-align: center; font-weight: bold; box-sizing: border-box;">AMOUNT</th>
+                        <th style="width: 10px; border-right: 1.2px solid #000; padding: 3px 2px; text-align: center; font-weight: bold; box-sizing: border-box;">SR.</th>
+                        <th style="width: 50px; border-right: 1.2px solid #000; padding: 3px 4px; text-align: left; font-weight: bold; box-sizing: border-box;">PARTICULARS</th>
+                        <th style="width: 10px; border-right: 1.2px solid #000; padding: 3px 2px; text-align: center; font-weight: bold; box-sizing: border-box;">QTY</th>
+                        <th style="width: 20px; padding: 3px 4px; text-align: center; font-weight: bold; box-sizing: border-box;">AMOUNT</th>
                     </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
