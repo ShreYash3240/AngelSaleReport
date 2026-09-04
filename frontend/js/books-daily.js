@@ -146,7 +146,6 @@ function getBookUnitPrice(itemName) {
 
     // 1. Check Standard Bundle Price Matrix (BOOKS_PRICE_MATRIX)
     if (typeof BOOKS_PRICE_MATRIX !== "undefined") {
-        // Try direct key or capitalized key lookups safely
         const bundleMatrix = BOOKS_PRICE_MATRIX[stdKey] || BOOKS_PRICE_MATRIX[stdRaw] || BOOKS_PRICE_MATRIX[stdRaw.toUpperCase()];
         if (bundleMatrix && bundleMatrix[itemName] !== undefined) {
             return Number(bundleMatrix[itemName]) || 0;
