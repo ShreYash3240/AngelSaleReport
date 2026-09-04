@@ -35,6 +35,7 @@ const discardBtn = document.getElementById("discardBtn");
 function handleLogout() {
     sessionStorage.clear();
     localStorage.removeItem("cognito_id_token");
+    localStorage.removeItem("selectedBranch");
     window.location.replace("/login.html");
 }
 
@@ -44,7 +45,8 @@ function handleLogout() {
 
     try {
         const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-        const payload = JSON.parse(decodeURIComponent(atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")));
+        const json = decodeURIComponent(atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+        const payload = JSON.parse(json);
 
         if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
             sessionStorage.removeItem("cognito_id_token");
@@ -54,12 +56,25 @@ function handleLogout() {
         const emailDisplay = document.getElementById("userEmailDisplay");
         if (emailDisplay) emailDisplay.textContent = payload.name || payload.email || "Accountant";
 
-        document.getElementById("appContainer").style.display = "block";
-        document.getElementById("authBtn").onclick = (e) => { e.preventDefault(); handleLogout(); };
-    } catch {
+        // Reveal the main container
+        const appContainer = document.getElementById("appContainer");
+        if (appContainer) {
+            appContainer.style.display = "block";
+        }
+
+        const authBtn = document.getElementById("authBtn");
+        if (authBtn) {
+            authBtn.onclick = (e) => {
+                e.preventDefault();
+                handleLogout();
+            };
+        }
+    } catch (err) {
+        console.error("Auth decoding error:", err);
         window.location.replace("/login.html");
     }
 })();
+
 
 function getAuthHeaders() {
     return {
