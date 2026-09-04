@@ -384,13 +384,13 @@ function showDigitalReceiptSlip(bill) {
                 <span style="font-weight: bold; white-space: nowrap;">Std : </span>
                 <span style="border-bottom: 1px solid #000; flex-grow: 1; margin-left: 4px; padding-left: 2px; font-weight: 600;">${bill.standard || ""}</span>
             </div>
-                        <table style="width: 100%; table-layout: fixed; border-collapse: collapse; border: 1.2px solid #000; font-size: 0.72rem; box-sizing: border-box; margin: 0 auto;">
+            <table style="width: 100%; table-layout: fixed; border-collapse: collapse; border: 1.2px solid #000; font-size: 0.68rem; box-sizing: border-box; margin: 0 auto;">
                 <thead>
                     <tr style="border-bottom: 1.2px solid #000;">
-                        <th style="width: 10%; border-right: 1.2px solid #000; padding: 4px 2px; text-align: center; font-weight: bold; box-sizing: border-box;">SR.</th>
-                        <th style="width: 55%; border-right: 1.2px solid #000; padding: 4px 6px; text-align: left; font-weight: bold; box-sizing: border-box;">PARTICULARS</th>
-                        <th style="width: 15%; border-right: 1.2px solid #000; padding: 4px 2px; text-align: center; font-weight: bold; box-sizing: border-box;">QTY</th>
-                        <th style="width: 20%; padding: 4px 4px; text-align: center; font-weight: bold; box-sizing: border-box;">AMOUNT</th>
+                        <th style="width: 10%; border-right: 1.2px solid #000; padding: 2px 1px; text-align: center; font-weight: bold; box-sizing: border-box;">SR.</th>
+                        <th style="width: 50%; border-right: 1.2px solid #000; padding: 2px 2px; text-align: left; font-weight: bold; box-sizing: border-box;">PARTICULARS</th>
+                        <th style="width: 15%; border-right: 1.2px solid #000; padding: 2px 1px; text-align: center; font-weight: bold; box-sizing: border-box;">QTY</th>
+                        <th style="width: 25%; padding: 2px 2px; text-align: center; font-weight: bold; box-sizing: border-box;">AMOUNT</th>
                     </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
