@@ -146,13 +146,13 @@ function getBookUnitPrice(itemName) {
     const stdRaw = standard.value.trim();
     if (!stdRaw) return 0;
 
-    // Normalize standard format to match BOOK_PRICE_MATRIX keys in prices.js ("NURSERY", "JR. KG", "SR. KG", "I", "II"...)
+    // Normalize standard format to match price matrix keys
     let stdKey = stdRaw.toUpperCase();
     if (stdKey.includes("NUR")) stdKey = "NURSERY";
     else if (stdKey.includes("JR") || stdKey.includes("LKG")) stdKey = "JR. KG";
     else if (stdKey.includes("SR") || stdKey.includes("UKG")) stdKey = "SR. KG";
 
-    // 1. Check Bundle/Standard Price Matrix first
+    // 1. Check Standard Bundle Price Matrix first
     if (typeof BOOK_PRICE_MATRIX !== "undefined" && BOOK_PRICE_MATRIX[stdKey]) {
         if (BOOK_PRICE_MATRIX[stdKey][itemName] !== undefined) {
             return BOOK_PRICE_MATRIX[stdKey][itemName];
