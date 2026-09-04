@@ -302,29 +302,30 @@ function showDigitalReceiptSlip(bill) {
     const minRows = 4;
     const totalRows = Math.max(items.length, minRows);
 
-    for (let i = 0; i < totalRows; i++) {
+        for (let i = 0; i < totalRows; i++) {
         const tr = document.createElement("tr");
-        tr.style.height = "26px";
+        tr.style.height = "22px";
 
         if (i < items.length) {
             const item = items[i];
             const sizeStr = item.size ? ` (${item.size})` : "";
             tr.innerHTML = `
-                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.8rem;">${i + 1}</td>
-                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1; padding: 2px 6px; font-weight: 600;">${item.name}${sizeStr}</td>
-                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center;">${item.quantity || 1}</td>
-                <td style="border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700;">${Number(item.amount || 0)}</td>
+                <td style="border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.72rem;">${i + 1}</td>
+                <td style="border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; padding: 2px 4px; font-weight: 600; font-size: 0.72rem;">${item.name}${sizeStr}</td>
+                <td style="border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.72rem;">${item.quantity || 1}</td>
+                <td style="border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.75rem;">${Number(item.amount || 0)}</td>
             `;
         } else {
             tr.innerHTML = `
-                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
-                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
-                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
+                <td style="border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
+                <td style="border-right: 1.2px solid #000; border-bottom: 1px실#cbd5e1;"></td>
+                <td style="border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
                 <td style="border-bottom: 1px solid #cbd5e1;"></td>
             `;
         }
         tbody.appendChild(tr);
     }
+
 
     if (bill.paymentMode === "Online") {
         const trPay = document.createElement("tr");
