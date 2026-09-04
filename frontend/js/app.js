@@ -344,26 +344,30 @@ function showDigitalReceiptSlip(bill) {
         const tr = document.createElement("tr");
         tr.style.height = "22px";
 
+            for (let i = 0; i < totalRows; i++) {
+        const tr = document.createElement("tr");
+        tr.style.height = "22px";
+
         if (i < items.length) {
             const item = items[i];
             const sizeStr = item.size ? ` (${item.size})` : "";
             tr.innerHTML = `
-                <td style="width: 32px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.62rem; padding: 3px 1px; vertical-align: middle; box-sizing: border-box;">${i + 1}</td>
-                <td style="width: 145px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; padding: 3px 3px; font-weight: 600; font-size: 0.62rem; word-break: break-word; white-space: normal; line-height: 1.1; vertical-align: middle; box-sizing: border-box;">${item.name}${sizeStr}</td>
+                <td style="width: 30px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.62rem; padding: 3px 1px; vertical-align: middle; box-sizing: border-box;">${i + 1}</td>
+                <td style="width: 134px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; padding: 3px 3px; font-weight: 600; font-size: 0.62rem; word-break: break-word; white-space: normal; line-height: 1.1; vertical-align: middle; box-sizing: border-box;">${item.name}${sizeStr}</td>
                 <td style="width: 45px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.65rem; padding: 3px 1px; vertical-align: middle; box-sizing: border-box;">${item.quantity || 1}</td>
-                <td style="width: 82px; border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.68rem; padding: 3px 2px; vertical-align: middle; box-sizing: border-box;">${Number(item.amount || 0)}</td>
+                <td style="width: 95px; border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.68rem; padding: 3px 2px; vertical-align: middle; box-sizing: border-box;">${Number(item.amount || 0)}</td>
             `;
         } else {
-            // FIXED: Fallback empty rows now match the exact pixel widths so they don't break table layout
             tr.innerHTML = `
-                <td style="width: 32px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                <td style="width: 145px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 30px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 134px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
                 <td style="width: 45px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                <td style="width: 82px; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 95px; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
             `;
         }
         tbody.appendChild(tr);
     }
+
 
     if (bill.paymentMode === "Online") {
         const trPay = document.createElement("tr");

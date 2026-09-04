@@ -240,14 +240,14 @@
                     <span id="slipStd" style="border-bottom: 1px solid #000; flex-grow: 1; margin-left: 4px; padding-left: 2px; font-weight: 600;">-</span>
                 </div>
 
-                <!-- Table with all 4 headers explicitly defined -->
-                <table style="width: 100%; table-layout: fixed; border-collapse: collapse; border: 1.2px solid #000; font-size: 0.68rem; box-sizing: border-box;">
+                                <!-- Table locked to an exact pixel width matching the receipt box -->
+                <table style="width: 304px; table-layout: fixed; border-collapse: collapse; border: 1.2px solid #000; font-size: 0.68rem; box-sizing: border-box; margin: 0 auto;">
                     <thead>
                         <tr style="border-bottom: 1.2px solid #000;">
-                            <th style="width: 32px; border-right: 1.2px solid #000; padding: 2px 1px; text-align: center; font-weight: bold; overflow: hidden; box-sizing: border-box;">SR.</th>
-                            <th style="width: 145px; border-right: 1.2px solid #000; padding: 2px 3px; text-align: left; font-weight: bold; overflow: hidden; box-sizing: border-box;">PARTICULARS</th>
+                            <th style="width: 30px; border-right: 1.2px solid #000; padding: 2px 1px; text-align: center; font-weight: bold; overflow: hidden; box-sizing: border-box;">SR.</th>
+                            <th style="width: 134px; border-right: 1.2px solid #000; padding: 2px 3px; text-align: left; font-weight: bold; overflow: hidden; box-sizing: border-box;">PARTICULARS</th>
                             <th style="width: 45px; border-right: 1.2px solid #000; padding: 2px 1px; text-align: center; font-weight: bold; overflow: hidden; box-sizing: border-box;">QTY</th>
-                            <th style="width: 82px; padding: 2px 2px; text-align: center; font-weight: bold; overflow: hidden; box-sizing: border-box;">AMOUNT</th>
+                            <th style="width: 95px; padding: 2px 2px; text-align: center; font-weight: bold; overflow: hidden; box-sizing: border-box;">AMOUNT</th>
                         </tr>
                     </thead>
                     <tbody id="slipItemsBody">
@@ -257,10 +257,11 @@
                         <tr style="border-top: 1.2px solid #000;">
                             <td colspan="2" style="border-right: 1.2px solid #000; padding: 0;"></td>
                             <td style="width: 45px; border-right: 1.2px solid #000; padding: 2px 1px; text-align: center; font-weight: 900; font-size: 0.7rem;">Total</td>
-                            <td id="slipTotalAmount" style="width: 82px; padding: 2px 2px; text-align: center; font-weight: 900; font-size: 0.72rem;">-</td>
+                            <td id="slipTotalAmount" style="width: 95px; padding: 2px 2px; text-align: center; font-weight: 900; font-size: 0.72rem;">-</td>
                         </tr>
                     </tfoot>
                 </table>
+
 
                 <!-- Bottom Notice and Signature Footer -->
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 5px;">
