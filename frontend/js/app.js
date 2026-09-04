@@ -340,7 +340,7 @@ function showDigitalReceiptSlip(bill) {
     const minRows = 4;
     const totalRows = Math.max(items.length, minRows);
 
-            for (let i = 0; i < totalRows; i++) {
+        for (let i = 0; i < totalRows; i++) {
         const tr = document.createElement("tr");
         tr.style.height = "22px";
 
@@ -354,16 +354,16 @@ function showDigitalReceiptSlip(bill) {
                 <td style="width: 82px; border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.68rem; padding: 3px 2px; vertical-align: middle; box-sizing: border-box;">${Number(item.amount || 0)}</td>
             `;
         } else {
+            // FIXED: Fallback empty rows now match the exact pixel widths so they don't break table layout
             tr.innerHTML = `
-                <td style="width: 10%; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                <td style="width: 48%; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                <td style="width: 14%; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                <td style="width: 28%; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 32px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 145px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 45px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 82px; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
             `;
         }
         tbody.appendChild(tr);
     }
-
 
     if (bill.paymentMode === "Online") {
         const trPay = document.createElement("tr");
