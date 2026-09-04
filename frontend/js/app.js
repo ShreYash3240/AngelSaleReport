@@ -317,7 +317,7 @@ function clearForm() {
 }
 
 // ==================================================
-// DIGITAL BILL SLIP POPUP & PRINT ENGINE
+// FULLY SELF-CONTAINED DIGITAL BILL SLIP (NO HTML EDITS NEEDED)
 // ==================================================
 function showDigitalReceiptSlip(bill) {
     const modal = document.getElementById("receiptSlipModal");
@@ -328,57 +328,97 @@ function showDigitalReceiptSlip(bill) {
         ? `${parseInt(dateParts[2], 10)}/${parseInt(dateParts[1], 10)}/${dateParts[0].slice(-2)}` 
         : bill.billDate;
 
-    document.getElementById("slipDate").textContent = formattedDate;
-    document.getElementById("slipBillNo").textContent = bill.billNo || "";
-    document.getElementById("slipStudentName").textContent = bill.studentName || "";
-    document.getElementById("slipStd").textContent = bill.standard || "";
-
-    const tbody = document.getElementById("slipItemsBody");
-    tbody.innerHTML = "";
-
     const items = bill.items || [];
     const minRows = 4;
     const totalRows = Math.max(items.length, minRows);
 
-        for (let i = 0; i < totalRows; i++) {
-        const tr = document.createElement("tr");
-        tr.style.height = "22px";
-
+    // Build rows HTML programmatically with locked pixel widths
+    let rowsHtml = "";
+    for (let i = 0; i < totalRows; i++) {
         if (i < items.length) {
             const item = items[i];
             const sizeStr = item.size ? ` (${item.size})` : "";
-            tr.innerHTML = `
-                <td style="width: 30px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.62rem; padding: 3px 1px; vertical-align: middle; box-sizing: border-box;">${i + 1}</td>
-                <td style="width: 134px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; padding: 3px 3px; font-weight: 600; font-size: 0.62rem; word-break: break-word; white-space: normal; line-height: 1.1; vertical-align: middle; box-sizing: border-box;">${item.name}${sizeStr}</td>
-                <td style="width: 45px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.65rem; padding: 3px 1px; vertical-align: middle; box-sizing: border-box;">${item.quantity || 1}</td>
-                <td style="width: 95px; border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.68rem; padding: 3px 2px; vertical-align: middle; box-sizing: border-box;">${Number(item.amount || 0)}</td>
-            `;
+            rowsHtml += `
+                <tr style="height: 22px;">
+                    <td style="width: 30px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.62rem; padding: 3px 1px; vertical-align: middle; box-sizing: border-box;">${i + 1}</td>
+                    <td style="width: 134px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; padding: 3px 3px; font-weight: 600; font-size: 0.62rem; word-break: break-word; white-space: normal; line-height: 1.1; vertical-align: middle; box-sizing: border-box;">${item.name}${sizeStr}</td>
+                    <td style="width: 45px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.65rem; padding: 3px 1px; vertical-align: middle; box-sizing: border-box;">${item.quantity || 1}</td>
+                    <td style="width: 95px; border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.68rem; padding: 3px 2px; vertical-align: middle; box-sizing: border-box;">${Number(item.amount || 0)}</td>
+                </tr>`;
         } else {
-            tr.innerHTML = `
-                <td style="width: 30px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                <td style="width: 134px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                <td style="width: 45px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-                <td style="width: 95px; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
-            `;
+            rowsHtml += `
+                <tr style="height: 22px;">
+                    <td style="width: 30px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                    <td style="width: 134px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                    <td style="width: 45px; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                    <td style="width: 95px; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                </tr>`;
         }
-        tbody.appendChild(tr);
     }
-
 
     if (bill.paymentMode === "Online") {
-        const trPay = document.createElement("tr");
-        trPay.innerHTML = `
-            <td style="border-right: 1.5px solid #000;"></td>
-            <td colspan="3" style="padding: 2px 6px; font-size: 0.75rem; color: #334155; font-weight: bold;">
-                Online : ${bill.transactionId || "Verified"}
-            </td>
-        `;
-        tbody.appendChild(trPay);
+        rowsHtml += `
+            <tr>
+                <td style="border-right: 1.5px solid #000;"></td>
+                <td colspan="3" style="padding: 2px 6px; font-size: 0.72rem; color: #334155; font-weight: bold;">
+                    Online : ${bill.transactionId || "Verified"}
+                </td>
+            </tr>`;
     }
 
-    document.getElementById("slipTotalAmount").textContent = Number(bill.total || 0);
+    // Inject the entire receipt structure dynamically so it's guaranteed to match
+    const slipArea = document.getElementById("printableSlipArea");
+    slipArea.innerHTML = `
+        <div class="receipt-border-box" style="border: 2px solid #000; border-radius: 8px; padding: 8px 6px 6px 6px; font-family: 'Arial', sans-serif; color: #000; background: #fff; font-size: 0.68rem; box-sizing: border-box; width: 100%; max-width: 320px; margin: 0 auto;">
+            <div style="text-align: center;">
+                <h2 style="margin: 0; font-size: 0.85rem; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase;">SHREE GAJANAN ENTERPRISES</h2>
+                <p style="margin: 2px 0 0 0; font-size: 0.52rem; line-height: 1.15; font-weight: 600;">Ward No. 03, Circuit House Marg Wardha, Maharashtra</p>
+            </div>
+            <div style="border-top: 1.2px solid #000; margin: 4px -6px 4px -6px;"></div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; font-weight: bold; margin-bottom: 2px; font-size: 0.7rem;">
+                <div>Bill Date : <span style="font-weight: 700;">${formattedDate}</span></div>
+                <div>Bill No : <span style="font-size: 0.75rem; font-weight: 900;">${bill.billNo || ""}</span></div>
+            </div>
+            <div style="margin-bottom: 2px; display: flex; align-items: baseline; font-size: 0.7rem;">
+                <span style="font-weight: bold; white-space: nowrap;">Student Name : </span>
+                <span style="border-bottom: 1px solid #000; flex-grow: 1; margin-left: 4px; padding-left: 2px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${bill.studentName || ""}</span>
+            </div>
+            <div style="margin-bottom: 5px; display: flex; align-items: baseline; font-size: 0.7rem;">
+                <span style="font-weight: bold; white-space: nowrap;">Std : </span>
+                <span style="border-bottom: 1px solid #000; flex-grow: 1; margin-left: 4px; padding-left: 2px; font-weight: 600;">${bill.standard || ""}</span>
+            </div>
+            <table style="width: 304px; table-layout: fixed; border-collapse: collapse; border: 1.2px solid #000; font-size: 0.68rem; box-sizing: border-box; margin: 0 auto;">
+                <thead>
+                    <tr style="border-bottom: 1.2px solid #000;">
+                        <th style="width: 30px; border-right: 1.2px solid #000; padding: 2px 1px; text-align: center; font-weight: bold; overflow: hidden; box-sizing: border-box;">SR.</th>
+                        <th style="width: 134px; border-right: 1.2px solid #000; padding: 2px 3px; text-align: left; font-weight: bold; overflow: hidden; box-sizing: border-box;">PARTICULARS</th>
+                        <th style="width: 45px; border-right: 1.2px solid #000; padding: 2px 1px; text-align: center; font-weight: bold; overflow: hidden; box-sizing: border-box;">QTY</th>
+                        <th style="width: 95px; padding: 2px 2px; text-align: center; font-weight: bold; overflow: hidden; box-sizing: border-box;">AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+                <tfoot>
+                    <tr style="border-top: 1.2px solid #000;">
+                        <td colspan="2" style="border-right: 1.2px solid #000; padding: 0;"></td>
+                        <td style="width: 45px; border-right: 1.2px solid #000; padding: 2px 1px; text-align: center; font-weight: 900; font-size: 0.7rem;">Total</td>
+                        <td style="width: 95px; padding: 2px 2px; text-align: center; font-weight: 900; font-size: 0.72rem;">${Number(bill.total || 0)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 5px;">
+                <div style="font-size: 0.48rem; line-height: 1.15; font-weight: bold; max-width: 55%;">
+                    Note : No exchange or return on books / Note Book once purchased.
+                </div>
+                <div style="text-align: center; min-width: 70px;">
+                    <div style="color: #1e3a8a; font-family: 'Brush Script MT', cursive, sans-serif; font-size: 0.8rem; height: 12px; line-height: 12px;">Approved</div>
+                    <div style="border-top: 1.2px solid #000; font-size: 0.58rem; font-weight: bold; padding-top: 1px;">Signature</div>
+                </div>
+            </div>
+        </div>`;
+
     modal.style.display = "flex";
 }
+
 
 document.getElementById("printSlipBtn")?.addEventListener("click", () => window.print());
 document.getElementById("closeSlipBtn")?.addEventListener("click", () => {
