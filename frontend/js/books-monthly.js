@@ -21,6 +21,7 @@ const reportBody = document.getElementById("reportBody");
 const reportEmptyMessage = document.getElementById("reportEmptyMessage");
 
 let bookBillsCache = [];
+let currentBookChart = null;
 
 // ==================================================
 // AUTHENTICATION & HEADERS
@@ -32,8 +33,12 @@ function handleLogout() {
     window.location.replace("/login.html");
 }
 
+function getStoredToken() {
+    return sessionStorage.getItem("cognito_id_token") || localStorage.getItem("cognito_id_token");
+}
+
 (function enforceAuth() {
-    const token = sessionStorage.getItem("cognito_id_token");
+    const token = getStoredToken();
     if (!token) return window.location.replace("/login.html");
 
     try {
@@ -42,8 +47,8 @@ function handleLogout() {
         const payload = JSON.parse(json);
 
         if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
-            sessionStorage.removeItem("cognito_id_token");
-            return window.location.replace("/login.html");
+            handleLogout();
+            return;
         }
 
         const emailDisplay = document.getElementById("userEmailDisplay");
@@ -60,20 +65,19 @@ function handleLogout() {
             };
         }
     } catch {
-        window.location.replace("/login.html");
+        handleLogout();
     }
 })();
 
 function getAuthHeaders() {
-    const token = sessionStorage.getItem("cognito_id_token");
     return {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
+        "Authorization": `Bearer ${getStoredToken()}`
     };
 }
 
 // ==================================================
-// DATE UTILITIES
+// DATE UTILITIES & SANITIZATION
 // ==================================================
 function formatDate(ds) {
     if (!ds) return "";
@@ -95,7 +99,6 @@ function setMonthRange(year, monthIndex) {
     reportToDate.value = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 }
 
-// Generates an array of all "YYYY-MM" months between two dates
 function getMonthsInRange(fromStr, toStr) {
     const months = [];
     const [fromY, fromM] = fromStr.split("-").map(Number);
@@ -116,7 +119,27 @@ function getMonthsInRange(fromStr, toStr) {
 }
 
 // ==================================================
-// DATA FETCHING & REPORT RENDER
+// S3 VAULT PRE-SIGNED URL VIEWER
+// ==================================================
+async function viewReceiptImage(s3Key) {
+    if (!s3Key) return alert("No original receipt image on file for this bill.");
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/receipt-url?action=view&s3Key=${encodeURIComponent(s3Key)}`, {
+            headers: getAuthHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok || !data.viewUrl) throw new Error(data.message || "Could not retrieve image");
+
+        window.open(data.viewUrl, "_blank");
+    } catch (err) {
+        alert("Failed to load receipt: " + err.message);
+    }
+}
+window.viewReceiptImage = viewReceiptImage;
+
+// ==================================================
+// DATA FETCHING & REPORT RENDER (CONCURRENT)
 // ==================================================
 async function loadReport() {
     const from = reportFromDate.value;
@@ -126,37 +149,33 @@ async function loadReport() {
     if (!from || !to) return alert("Please select both From and To dates.");
     if (from > to) return alert("From Date cannot be later than To Date.");
 
-    reportBody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding: 24px;">Generating report...</td></tr>`;
+    reportBody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 24px;">Generating book report...</td></tr>`;
     if (reportEmptyMessage) reportEmptyMessage.style.display = "none";
 
     const monthsToFetch = getMonthsInRange(from, to);
 
     try {
-        let allBills = [];
-
-        // Fetch each required monthly partition
-        for (const month of monthsToFetch) {
+        // Parallel requests using Promise.all
+        const fetchPromises = monthsToFetch.map(month => {
             let url = `${API_BASE_URL}/bills?department=Books&month=${month}`;
             if (branch !== "All") url += `&branch=${encodeURIComponent(branch)}`;
-            
-            const res = await fetch(url, { headers: getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                allBills = allBills.concat(data);
-            }
-        }
+            return fetch(url, { headers: getAuthHeaders() }).then(res => res.ok ? res.json() : []);
+        });
 
-        // Filter exact inclusive date range and prevent duplicate keys
+        const results = await Promise.all(fetchPromises);
+        const allBills = results.flat();
+
         const seen = new Set();
         bookBillsCache = allBills.filter(b => {
+            if (b.department && b.department !== "Books") return false;
             if (b.billDate < from || b.billDate > to) return false;
-            const key = `${b.branch || ""}_${b.billDate}_${b.billNo}`;
+            
+            const key = b._id || b.id || `${b.branch || ""}_${b.billDate}_${b.billNo}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
         });
 
-        // Sort by date descending, then bill number descending
         bookBillsCache.sort((a, b) => 
             (b.billDate || "").localeCompare(a.billDate || "") || 
             String(b.billNo).localeCompare(String(a.billNo))
@@ -165,7 +184,7 @@ async function loadReport() {
         renderReportTable(bookBillsCache);
     } catch (err) {
         console.error("Report fetch error:", err);
-        reportBody.innerHTML = `<tr><td colspan="10" style="color:red; text-align:center; padding: 20px;">Failed to load report: ${err.message}</td></tr>`;
+        reportBody.innerHTML = `<tr><td colspan="11" style="color:red; text-align:center; padding: 20px;">Failed to load report: ${escapeHTML(err.message)}</td></tr>`;
     }
 }
 
@@ -183,10 +202,13 @@ function renderReportTable(bills) {
         summaryCash.textContent = "₹0.00";
         summaryOnline.textContent = "₹0.00";
         tableRecordCount.textContent = "0";
+        renderBooksChart();
         return;
     }
 
     if (reportEmptyMessage) reportEmptyMessage.style.display = "none";
+
+    const fragment = document.createDocumentFragment();
 
     bills.forEach(bill => {
         const amt = Number(bill.total) || 0;
@@ -201,40 +223,47 @@ function renderReportTable(bills) {
             return `<div>${escapeHTML(i.name)} × ${q} (₹${(Number(i.amount) || 0).toFixed(2)})</div>`;
         }).join("");
 
+        // S3 Receipt Vault view action
+        const receiptAction = bill.receiptS3Key 
+            ? `<button type="button" class="clear-btn" style="padding: 2px 8px; font-size: 0.85rem;" onclick="viewReceiptImage('${escapeHTML(bill.receiptS3Key)}')" title="View Original Paper Receipt">📷 View</button>` 
+            : `<span style="color: #94a3b8;">-</span>`;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td>${formatDate(bill.billDate)}</td>
             <td>${escapeHTML(bill.branch || "-")}</td>
             <td><strong>${escapeHTML(bill.billNo)}</strong></td>
             <td><strong>${escapeHTML(bill.studentName || "-")}</strong></td>
-            <td>${escapeHTML(bill.standard)}</td>
+            <td>${escapeHTML(bill.standard || "-")}</td>
             <td>${escapeHTML(bill.paymentMode || "")}</td>
             <td>${escapeHTML(bill.transactionId || "-")}</td>
             <td class="item-list">${itemBreakdown}</td>
             <td>${totalQty}</td>
             <td><strong>₹${amt.toFixed(2)}</strong></td>
+            <td style="text-align: center;">${receiptAction}</td>
         `;
-        reportBody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    reportBody.appendChild(fragment);
 
     summaryTotal.textContent = `₹${totalRevenue.toFixed(2)}`;
     summaryCount.textContent = bills.length;
     summaryCash.textContent = `₹${cashRevenue.toFixed(2)}`;
     summaryOnline.textContent = `₹${onlineRevenue.toFixed(2)}`;
     tableRecordCount.textContent = bills.length;
+
+    renderBooksChart();
 }
 
 // ==================================================
 // CHART.JS CLIENT-SIDE ANALYTICS (BOOKS)
 // ==================================================
-let currentBookChart = null;
-
 function renderBooksChart() {
     const canvas = document.getElementById("salesChartCanvas");
     const chartTypeSelect = document.getElementById("chartTypeSelect");
     if (!canvas || !window.Chart) return;
 
-    // Clear any previous chart instance to avoid overlapping render bugs
     if (currentBookChart) {
         currentBookChart.destroy();
         currentBookChart = null;
@@ -246,7 +275,6 @@ function renderBooksChart() {
     const type = chartTypeSelect?.value || "bar";
 
     if (type === "bar") {
-        // Aggregate revenue by standard
         const stdTotals = {};
         bookBillsCache.forEach(b => {
             const std = b.standard || "Other";
@@ -273,7 +301,7 @@ function renderBooksChart() {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ` Revenue: ₹${Number(ctx.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            label: (c) => ` Revenue: ₹${Number(c.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
                         }
                     }
                 },
@@ -289,7 +317,6 @@ function renderBooksChart() {
         });
 
     } else if (type === "bundlePie") {
-        // Categorize into Complete Sets, Text Sets, Notebook Sets, and Loose Books
         const bundleCounts = {
             "Complete Sets": 0,
             "Textbook Sets": 0,
@@ -347,7 +374,7 @@ function renderBooksChart() {
                     },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ` ${ctx.label}: ${ctx.raw} units`
+                            label: (c) => ` ${c.label}: ${c.raw} units`
                         }
                     }
                 }
@@ -355,7 +382,6 @@ function renderBooksChart() {
         });
 
     } else if (type === "topBooks") {
-        // Aggregate only loose / individual textbook and notebook titles (omit bundle markers)
         const itemCounts = {};
 
         bookBillsCache.forEach(b => {
@@ -371,7 +397,7 @@ function renderBooksChart() {
                     upper.includes("NOTEBOOK SET") ||
                     upper.includes("COMPLETE SET")
                 ) {
-                    return; // Skip bundle markers
+                    return;
                 }
 
                 if (name && qty > 0) {
@@ -380,7 +406,6 @@ function renderBooksChart() {
             });
         });
 
-        // Sort descending and take top 8
         const sortedItems = Object.entries(itemCounts)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 8);
@@ -402,14 +427,14 @@ function renderBooksChart() {
                 }]
             },
             options: {
-                indexAxis: "y", // Horizontal layout for clean title readability
+                indexAxis: "y",
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ` Quantity: ${ctx.raw} sold`
+                            label: (c) => ` Quantity: ${c.raw} sold`
                         }
                     }
                 },
@@ -419,15 +444,12 @@ function renderBooksChart() {
                         ticks: { stepSize: 1 },
                         grid: { color: "#f1f5f9" }
                     },
-                    y: {
-                        grid: { display: false }
-                    }
+                    y: { grid: { display: false } }
                 }
             }
         });
 
     } else if (type === "paymentPie") {
-        // Aggregate Cash vs Online collection
         const payTotals = { Cash: 0, "Online / UPI": 0 };
         bookBillsCache.forEach(b => {
             if (b.paymentMode === "Online") payTotals["Online / UPI"] += (Number(b.total) || 0);
@@ -452,7 +474,7 @@ function renderBooksChart() {
                     legend: { position: "bottom" },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ` ₹${Number(ctx.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            label: (c) => ` ₹${Number(c.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
                         }
                     }
                 }
@@ -460,7 +482,6 @@ function renderBooksChart() {
         });
 
     } else if (type === "line") {
-        // Daily collection trend
         const dailyTotals = {};
         bookBillsCache.forEach(b => {
             const dt = b.billDate || "";
@@ -497,7 +518,7 @@ function renderBooksChart() {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ` Total: ₹${Number(ctx.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            label: (c) => ` Total: ₹${Number(c.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
                         }
                     }
                 },
@@ -514,15 +535,7 @@ function renderBooksChart() {
     }
 }
 
-// Re-render chart on dropdown change
 document.getElementById("chartTypeSelect")?.addEventListener("change", renderBooksChart);
-
-// Hook automatically into your table renderer
-const baseRenderReportTable = renderReportTable;
-renderReportTable = function(bills) {
-    baseRenderReportTable(bills);
-    renderBooksChart();
-};
 
 // ==================================================
 // EXCEL EXPORT (.XLSX) WITH GRANULAR MATRIX & TOTALS
@@ -538,7 +551,6 @@ function exportBooksXlsx() {
         return;
     }
 
-    // 1. Discover all unique individual book titles sold in this period
     const individualBookNames = new Set();
     bookBillsCache.forEach(bill => {
         (bill.items || []).forEach(i => {
@@ -551,7 +563,6 @@ function exportBooksXlsx() {
 
     const individualBookList = Array.from(individualBookNames).sort();
 
-    // 2. Build rows for each bill with Student Name
     let sumTotalAmount = 0;
     let sumTextQty = 0;
     let sumNoteQty = 0;
@@ -601,7 +612,6 @@ function exportBooksXlsx() {
             "COMPLETE SET": compQty || ""
         };
 
-        // Add dynamically discovered individual book titles
         individualBookList.forEach(bookTitle => {
             row[bookTitle] = extraItemQuantities[bookTitle] || "";
         });
@@ -609,7 +619,6 @@ function exportBooksXlsx() {
         return row;
     });
 
-    // 3. Append Blank Separation Row and Summary Row
     const emptyRow = {};
     const totalRow = {
         "Bill Date": "TOTALS",
@@ -639,7 +648,7 @@ function exportBooksXlsx() {
 }
 
 // ==================================================
-// EVENT LISTENERS & INIT
+// EVENT LISTENERS & INITIALIZATION
 // ==================================================
 loadReportBtn?.addEventListener("click", loadReport);
 exportExcelBtn?.addEventListener("click", exportBooksXlsx);
@@ -658,9 +667,8 @@ lastMonthBtn?.addEventListener("click", () => {
 
 reportBranch?.addEventListener("change", loadReport);
 
-// Init with current month range
-const d = new Date();
-setMonthRange(d.getFullYear(), d.getMonth());
+const now = new Date();
+setMonthRange(now.getFullYear(), now.getMonth());
 
 const savedBranch = localStorage.getItem("selectedBranch");
 if (savedBranch && reportBranch) {

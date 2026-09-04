@@ -21,13 +21,13 @@ const tableRecordCount = document.getElementById("tableRecordCount");
 const reportBody = document.getElementById("reportBody");
 const reportEmptyMessage = document.getElementById("reportEmptyMessage");
 
-// Individual uniform item breakdown columns for Matrix Export
 const XLSX_COLUMNS = [
     "SHIRT", "HALF PANTS", "FULL PANTS", "SKIRT", 
     "SHOES", "SOCKS", "BLAZZER", "BELT", "PT SHIRT", "PT PANT"
 ];
 
 let cachedUniformBills = [];
+let currentUniformChart = null;
 
 // ==================================================
 // AUTHENTICATION & HEADERS
@@ -39,8 +39,12 @@ function handleLogout() {
     window.location.replace("/login.html");
 }
 
+function getStoredToken() {
+    return sessionStorage.getItem("cognito_id_token") || localStorage.getItem("cognito_id_token");
+}
+
 (function enforceAuth() {
-    const token = sessionStorage.getItem("cognito_id_token");
+    const token = getStoredToken();
     if (!token) return window.location.replace("/login.html");
 
     try {
@@ -49,8 +53,8 @@ function handleLogout() {
         const payload = JSON.parse(json);
 
         if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
-            sessionStorage.removeItem("cognito_id_token");
-            return window.location.replace("/login.html");
+            handleLogout();
+            return;
         }
 
         const emailDisplay = document.getElementById("userEmailDisplay");
@@ -67,15 +71,14 @@ function handleLogout() {
             };
         }
     } catch {
-        window.location.replace("/login.html");
+        handleLogout();
     }
 })();
 
 function getAuthHeaders() {
-    const token = sessionStorage.getItem("cognito_id_token");
     return {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
+        "Authorization": `Bearer ${getStoredToken()}`
     };
 }
 
@@ -102,7 +105,6 @@ function setMonthRange(year, monthIndex) {
     reportToDate.value = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
 }
 
-// Generates an array of all "YYYY-MM" partitions between two dates
 function getMonthsInRange(fromStr, toStr) {
     const months = [];
     const [fromY, fromM] = fromStr.split("-").map(Number);
@@ -126,66 +128,48 @@ function getMonthsInRange(fromStr, toStr) {
 // UNIFORM ITEM EXPANSION ENGINE
 // ==================================================
 function isJuniorBoyStandard(std) {
-    const juniors = ["NURSERY", "JR. KG.", "SR. KG.", "LKG", "UKG", "I", "II", "III", "IV", "V", "VI", "1ST", "2ND", "3RD", "4TH", "5TH", "6TH"];
-    return juniors.includes(String(std || "").trim().toUpperCase());
+    const juniors = new Set(["NURSERY", "JR. KG.", "SR. KG.", "LKG", "UKG", "I", "II", "III", "IV", "V", "VI", "1ST", "2ND", "3RD", "4TH", "5TH", "6TH"]);
+    return juniors.has(String(std || "").trim().toUpperCase());
 }
 
 function expandBillItems(bill) {
-    const expanded = {};
+    const expanded = Object.create(null);
     XLSX_COLUMNS.forEach(col => expanded[col] = 0);
 
     const isGirl = String(bill.gender || "").trim().toUpperCase().startsWith("G");
     const isJuniorBoy = isJuniorBoyStandard(bill.standard);
 
     (bill.items || []).forEach(item => {
-        let name = (item.name || "").trim().toUpperCase();
+        const name = (item.name || "").trim().toUpperCase();
         const qty = Number(item.quantity) || 0;
         if (qty <= 0) return;
 
-        // 1. SET / UNIFORM SET
         if (name === "SET" || name === "UNIFORM SET") {
             expanded["SHIRT"] += qty;
-            if (isGirl) {
-                expanded["SKIRT"] += qty;
-            } else if (isJuniorBoy) {
-                expanded["HALF PANTS"] += qty;
-            } else {
-                expanded["FULL PANTS"] += qty;
-            }
+            if (isGirl) expanded["SKIRT"] += qty;
+            else if (isJuniorBoy) expanded["HALF PANTS"] += qty;
+            else expanded["FULL PANTS"] += qty;
             expanded["SHOES"] += qty;
             expanded["SOCKS"] += qty;
-        } 
-        // 2. SHIRT & PANT
-        else if (name === "SHIRT & PANT" || name === "SHIRT, PANT") {
+        } else if (name === "SHIRT & PANT" || name === "SHIRT, PANT") {
             expanded["SHIRT"] += qty;
-            if (isJuniorBoy) {
-                expanded["HALF PANTS"] += qty;
-            } else {
-                expanded["FULL PANTS"] += qty;
-            }
-        } 
-        // 3. SHIRT & SKIRT
-        else if (name === "SHIRT & SKIRT" || name === "SHIRT, SKIRT") {
+            if (isJuniorBoy) expanded["HALF PANTS"] += qty;
+            else expanded["FULL PANTS"] += qty;
+        } else if (name === "SHIRT & SKIRT" || name === "SHIRT, SKIRT") {
             expanded["SHIRT"] += qty;
             expanded["SKIRT"] += qty;
-        } 
-        // 4. SHOES & SOCKS
-        else if (name === "SHOES & SOCKS" || name === "SHOES, SOCKS") {
+        } else if (name === "SHOES & SOCKS" || name === "SHOES, SOCKS") {
             expanded["SHOES"] += qty;
             expanded["SOCKS"] += qty;
-        } 
-        // 5. ONLY SOCKS
-        else if (name === "ONLY SOCKS") {
+        } else if (name === "ONLY SOCKS") {
             expanded["SOCKS"] += qty;
-        } 
-        // 6. Direct Matches (BLAZZER, BELT, PT SHIRT, PT PANT, etc.)
-        else {
+        } else {
             let normalized = name.replace(/-/g, " ");
             if (normalized === "BLEZZER") normalized = "BLAZZER";
             if (normalized === "PT SHIRTS") normalized = "PT SHIRT";
             if (normalized === "PT PANTS") normalized = "PT PANT";
 
-            if (expanded.hasOwnProperty(normalized)) {
+            if (normalized in expanded) {
                 expanded[normalized] += qty;
             }
         }
@@ -193,6 +177,26 @@ function expandBillItems(bill) {
 
     return expanded;
 }
+
+// ==================================================
+// S3 VAULT PRE-SIGNED URL VIEWER
+// ==================================================
+async function viewReceiptImage(s3Key) {
+    if (!s3Key) return alert("No original receipt image on file for this bill.");
+
+    try {
+        const res = await fetch(`${API_BASE_URL}/receipt-url?action=view&s3Key=${encodeURIComponent(s3Key)}`, {
+            headers: getAuthHeaders()
+        });
+        const data = await res.json();
+        if (!res.ok || !data.viewUrl) throw new Error(data.message || "Could not retrieve image");
+
+        window.open(data.viewUrl, "_blank");
+    } catch (err) {
+        alert("Failed to load receipt: " + err.message);
+    }
+}
+window.viewReceiptImage = viewReceiptImage;
 
 // ==================================================
 // DATA FETCHING & REPORT RENDER
@@ -205,37 +209,34 @@ async function loadReport() {
     if (!from || !to) return alert("Please select both From and To dates.");
     if (from > to) return alert("From Date cannot be later than To Date.");
 
-    reportBody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding: 24px;">Generating uniform report...</td></tr>`;
+    // 12 columns alignment
+    reportBody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding: 24px;">Generating uniform report...</td></tr>`;
     if (reportEmptyMessage) reportEmptyMessage.style.display = "none";
 
     const monthsToFetch = getMonthsInRange(from, to);
 
     try {
-        let allBills = [];
-
-        for (const month of monthsToFetch) {
+        // Fetch all months concurrently
+        const fetchPromises = monthsToFetch.map(month => {
             let url = `${API_BASE_URL}/bills?department=Uniform&month=${month}`;
             if (branch !== "All") url += `&branch=${encodeURIComponent(branch)}`;
-            
-            const res = await fetch(url, { headers: getAuthHeaders() });
-            if (res.ok) {
-                const data = await res.json();
-                allBills = allBills.concat(data);
-            }
-        }
+            return fetch(url, { headers: getAuthHeaders() }).then(res => res.ok ? res.json() : []);
+        });
 
-        // Filter exact inclusive range and prevent duplicate keys
+        const results = await Promise.all(fetchPromises);
+        const allBills = results.flat();
+
         const seen = new Set();
         cachedUniformBills = allBills.filter(b => {
             if (b.department && b.department !== "Uniform") return false;
             if (b.billDate < from || b.billDate > to) return false;
-            const key = `${b.branch || ""}_${b.billDate}_${b.billNo}`;
+            
+            const key = b._id || b.id || `${b.branch || ""}_${b.billDate}_${b.billNo}`;
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
         });
 
-        // Sort descending by date, then bill number
         cachedUniformBills.sort((a, b) => 
             (b.billDate || "").localeCompare(a.billDate || "") || 
             String(b.billNo).localeCompare(String(a.billNo))
@@ -244,7 +245,7 @@ async function loadReport() {
         renderReportTable(cachedUniformBills);
     } catch (err) {
         console.error("Uniform report fetch error:", err);
-        reportBody.innerHTML = `<tr><td colspan="11" style="color:red; text-align:center; padding: 20px;">Failed to load report: ${err.message}</td></tr>`;
+        reportBody.innerHTML = `<tr><td colspan="12" style="color:red; text-align:center; padding: 20px;">Failed to load report: ${escapeHTML(err.message)}</td></tr>`;
     }
 }
 
@@ -262,10 +263,13 @@ function renderReportTable(bills) {
         summaryCash.textContent = "₹0.00";
         summaryOnline.textContent = "₹0.00";
         tableRecordCount.textContent = "0";
+        renderUniformsChart();
         return;
     }
 
     if (reportEmptyMessage) reportEmptyMessage.style.display = "none";
+
+    const fragment = document.createDocumentFragment();
 
     bills.forEach(bill => {
         const amt = Number(bill.total) || 0;
@@ -280,41 +284,48 @@ function renderReportTable(bills) {
             return `<div>${escapeHTML(i.name)}${i.size ? ` (${escapeHTML(i.size)})` : ""} × ${q} (₹${(Number(i.amount) || 0).toFixed(2)})</div>`;
         }).join("");
 
+        // S3 Receipt Vault view action (12th column)
+        const receiptAction = bill.receiptS3Key 
+            ? `<button type="button" class="clear-btn" style="padding: 2px 8px; font-size: 0.85rem;" onclick="viewReceiptImage('${escapeHTML(bill.receiptS3Key)}')" title="View Original Paper Receipt">📷 View</button>` 
+            : `<span style="color: #94a3b8;">-</span>`;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
             <td>${formatDate(bill.billDate)}</td>
             <td>${escapeHTML(bill.branch || "-")}</td>
             <td><strong>${escapeHTML(bill.billNo)}</strong></td>
             <td><strong>${escapeHTML(bill.studentName || "-")}</strong></td>
-            <td>${escapeHTML(bill.standard)}</td>
+            <td>${escapeHTML(bill.standard || "-")}</td>
             <td>${escapeHTML(bill.gender || "")}</td>
             <td>${escapeHTML(bill.paymentMode || "")}</td>
             <td>${escapeHTML(bill.transactionId || "-")}</td>
             <td class="item-list">${itemBreakdown}</td>
             <td>${totalQty}</td>
             <td><strong>₹${amt.toFixed(2)}</strong></td>
+            <td style="text-align: center;">${receiptAction}</td>
         `;
-        reportBody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    reportBody.appendChild(fragment);
 
     summaryTotal.textContent = `₹${totalRevenue.toFixed(2)}`;
     summaryCount.textContent = bills.length;
     summaryCash.textContent = `₹${cashRevenue.toFixed(2)}`;
     summaryOnline.textContent = `₹${onlineRevenue.toFixed(2)}`;
     tableRecordCount.textContent = bills.length;
+
+    renderUniformsChart();
 }
 
 // ==================================================
-// CHART.JS CLIENT-SIDE ANALYTICS (UNIFORM)
+// CHART.JS CLIENT-SIDE ANALYTICS
 // ==================================================
-let currentUniformChart = null;
-
 function renderUniformsChart() {
     const canvas = document.getElementById("salesChartCanvas");
     const chartTypeSelect = document.getElementById("chartTypeSelect");
     if (!canvas || !window.Chart) return;
 
-    // Destroy existing chart instance before creating a new one
     if (currentUniformChart) {
         currentUniformChart.destroy();
         currentUniformChart = null;
@@ -326,7 +337,6 @@ function renderUniformsChart() {
     const type = chartTypeSelect?.value || "bar";
 
     if (type === "bar") {
-        // Aggregate revenue by standard
         const stdTotals = {};
         cachedUniformBills.forEach(b => {
             const std = b.standard || "Other";
@@ -353,7 +363,7 @@ function renderUniformsChart() {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ` Revenue: ₹${Number(ctx.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            label: (c) => ` Revenue: ₹${Number(c.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
                         }
                     }
                 },
@@ -363,15 +373,11 @@ function renderUniformsChart() {
                         ticks: { callback: v => "₹" + Number(v).toLocaleString("en-IN") },
                         grid: { color: "#f1f5f9" }
                     },
-                    x: {
-                        grid: { display: false }
-                    }
+                    x: { grid: { display: false } }
                 }
             }
         });
-
     } else if (type === "pie") {
-        // Aggregate Cash vs Online collection
         const payTotals = { Cash: 0, "Online / UPI": 0 };
         cachedUniformBills.forEach(b => {
             if (b.paymentMode === "Online") payTotals["Online / UPI"] += (Number(b.total) || 0);
@@ -396,15 +402,13 @@ function renderUniformsChart() {
                     legend: { position: "bottom" },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ` ₹${Number(ctx.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            label: (c) => ` ₹${Number(c.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
                         }
                     }
                 }
             }
         });
-
     } else if (type === "itemsPie") {
-        // Aggregate individual garment/item quantities sold using expandBillItems()
         const itemTotals = {};
         XLSX_COLUMNS.forEach(col => itemTotals[col] = 0);
 
@@ -415,7 +419,6 @@ function renderUniformsChart() {
             });
         });
 
-        // Only include items that have at least 1 unit sold
         const activeLabels = [];
         const activeCounts = [];
         XLSX_COLUMNS.forEach(col => {
@@ -425,7 +428,6 @@ function renderUniformsChart() {
             }
         });
 
-        // Vibrant palette for individual items
         const itemPalette = [
             "#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed",
             "#0891b2", "#db2777", "#4b5563", "#ea580c", "#16a34a"
@@ -452,15 +454,13 @@ function renderUniformsChart() {
                     },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ` ${ctx.label}: ${ctx.raw} units sold`
+                            label: (c) => ` ${c.label}: ${c.raw} units sold`
                         }
                     }
                 }
             }
         });
-
     } else if (type === "line") {
-        // Daily timeline trend
         const dailyTotals = {};
         cachedUniformBills.forEach(b => {
             const dt = b.billDate || "";
@@ -497,7 +497,7 @@ function renderUniformsChart() {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
-                            label: (ctx) => ` Total: ₹${Number(ctx.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+                            label: (c) => ` Total: ₹${Number(c.raw).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
                         }
                     }
                 },
@@ -507,24 +507,14 @@ function renderUniformsChart() {
                         ticks: { callback: v => "₹" + Number(v).toLocaleString("en-IN") },
                         grid: { color: "#f1f5f9" }
                     },
-                    x: {
-                        grid: { display: false }
-                    }
+                    x: { grid: { display: false } }
                 }
             }
         });
     }
 }
 
-// Re-render chart on dropdown change
 document.getElementById("chartTypeSelect")?.addEventListener("change", renderUniformsChart);
-
-// Hook automatically into the table renderer
-const baseRenderReportTable = renderReportTable;
-renderReportTable = function(bills) {
-    baseRenderReportTable(bills);
-    renderUniformsChart();
-};
 
 // ==================================================
 // EXCEL MATRIX EXPORT (.XLSX)
@@ -540,7 +530,6 @@ function exportUniformXlsx() {
         return;
     }
 
-    // Build normalized rows with individual column breakdown
     const rows = cachedUniformBills.map(bill => {
         const row = {
             "Bill No.": bill.billNo || "",
@@ -562,7 +551,6 @@ function exportUniformXlsx() {
         return row;
     });
 
-    // Summary calculation rows
     const emptyRow = {};
     const labelRow = { 
         "Bill No.": "", "Branch": "", "Student Name": "", "Standard": "", 
@@ -608,9 +596,8 @@ lastMonthBtn?.addEventListener("click", () => {
 
 reportBranch?.addEventListener("change", loadReport);
 
-// Init with current month range
-const d = new Date();
-setMonthRange(d.getFullYear(), d.getMonth());
+const now = new Date();
+setMonthRange(now.getFullYear(), now.getMonth());
 
 const savedBranch = localStorage.getItem("selectedBranch");
 if (savedBranch && reportBranch) {

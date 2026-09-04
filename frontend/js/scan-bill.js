@@ -27,6 +27,9 @@ const scannedBillTotal = document.getElementById("scannedBillTotal");
 const addScannedItemBtn = document.getElementById("addScannedItemBtn");
 const discardBtn = document.getElementById("discardBtn");
 
+// Track the uploaded receipt image key in S3
+let currentReceiptS3Key = "";
+
 // ==================================================
 // AUTHENTICATION GUARD
 // ==================================================
@@ -78,10 +81,8 @@ function getAuthHeaders() {
 }
 
 // ==================================================
-// CLIENT-SIDE IMAGE COMPRESSION (Max 1400px, < 1MB)
+// CLIENT-SIDE IMAGE COMPRESSION (Max 1024px, < 300KB)
 // ==================================================
-
-// Scale image to max 1024px and compress to ~200-300KB
 function resizeImage(file, maxWidth = 1024, quality = 0.65) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -118,6 +119,45 @@ function resizeImage(file, maxWidth = 1024, quality = 0.65) {
 }
 
 // ==================================================
+// DIRECT S3 VAULT UPLOAD (PRE-SIGNED PUT URL)
+// ==================================================
+async function uploadToS3Vault(dataUrl, mimeType) {
+    // 1. Convert DataURL to binary Blob
+    const byteString = atob(dataUrl.split(",")[1]);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeType });
+
+    // 2. Request Pre-signed PUT URL from backend
+    const res = await fetch(`${API_BASE_URL}/receipt-url?action=upload&mimeType=${encodeURIComponent(mimeType)}`, {
+        headers: getAuthHeaders()
+    });
+
+    if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || "Failed to obtain S3 upload credentials");
+    }
+
+    const { uploadUrl, s3Key } = await res.json();
+
+    // 3. Direct PUT upload to S3 bucket
+    const s3Res = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": mimeType },
+        body: blob
+    });
+
+    if (!s3Res.ok) {
+        throw new Error(`Direct S3 upload failed with status ${s3Res.status}`);
+    }
+
+    return s3Key;
+}
+
+// ==================================================
 // CAMERA / FILE SELECTION HANDLER
 // ==================================================
 receiptImageInput?.addEventListener("change", async (e) => {
@@ -128,18 +168,24 @@ receiptImageInput?.addEventListener("change", async (e) => {
     try {
         loadingStatus.style.display = "block";
         reviewCard.style.display = "none";
-        loadingStatus.textContent = "⏳ Optimizing image size...";
+        currentReceiptS3Key = "";
 
+        loadingStatus.textContent = "⏳ Optimizing image size...";
         const resized = await resizeImage(file);
 
         imagePreview.src = resized.dataUrl;
         imagePreview.style.display = "inline-block";
 
+        // Step 1: Upload compressed photo directly to S3 Vault
+        loadingStatus.textContent = "🔒 Archiving image to S3 Vault...";
+        currentReceiptS3Key = await uploadToS3Vault(resized.dataUrl, resized.mimeType);
+
+        // Step 2: Extract text via Gemini backend proxy
         loadingStatus.textContent = "⏳ Gemini is analyzing handwriting and items... Please wait.";
         await analyzeBillWithGemini(resized.base64, resized.mimeType);
     } catch (err) {
-        console.error("Image processing error:", err);
-        alert("Failed to process photo: " + err.message);
+        console.error("Vault/OCR Processing error:", err);
+        alert("Upload/Scan Error: " + err.message);
         loadingStatus.style.display = "none";
     }
 });
@@ -166,7 +212,8 @@ async function analyzeBillWithGemini(base64Data, mimeType) {
         populateReviewForm(data);
     } catch (err) {
         console.error("Extraction Error:", err);
-        alert("Failed to extract data: " + err.message + "\nPlease try another photo or enter manually.");
+        alert("Failed to extract data: " + err.message + "\nPlease review the form and enter details manually.");
+        populateReviewForm({});
     } finally {
         loadingStatus.style.display = "none";
     }
@@ -257,6 +304,7 @@ discardBtn?.addEventListener("click", () => {
     reviewCard.style.display = "none";
     imagePreview.style.display = "none";
     receiptImageInput.value = "";
+    currentReceiptS3Key = "";
 });
 
 // ==================================================
@@ -304,6 +352,11 @@ scannedBillForm?.addEventListener("submit", async (e) => {
         payload.gender = scannedGender.value;
     }
 
+    // Attach S3 receipt key if an image was uploaded to the vault
+    if (currentReceiptS3Key) {
+        payload.receiptS3Key = currentReceiptS3Key;
+    }
+
     try {
         const btn = document.getElementById("confirmSaveBtn");
         btn.disabled = true;
@@ -322,6 +375,7 @@ scannedBillForm?.addEventListener("submit", async (e) => {
         reviewCard.style.display = "none";
         imagePreview.style.display = "none";
         receiptImageInput.value = "";
+        currentReceiptS3Key = "";
     } catch (err) {
         alert("Save Error: " + err.message);
     } finally {
