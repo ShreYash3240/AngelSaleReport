@@ -122,7 +122,6 @@ function resizeImage(file, maxWidth = 1024, quality = 0.65) {
 // DIRECT S3 VAULT UPLOAD (PRE-SIGNED PUT URL)
 // ==================================================
 async function uploadToS3Vault(dataUrl, mimeType) {
-    // 1. Convert DataURL to binary Blob
     const byteString = atob(dataUrl.split(",")[1]);
     const ab = new ArrayBuffer(byteString.length);
     const ia = new Uint8Array(ab);
@@ -131,7 +130,6 @@ async function uploadToS3Vault(dataUrl, mimeType) {
     }
     const blob = new Blob([ab], { type: mimeType });
 
-    // 2. Request Pre-signed PUT URL from backend
     const res = await fetch(`${API_BASE_URL}/receipt-url?action=upload&mimeType=${encodeURIComponent(mimeType)}`, {
         headers: getAuthHeaders()
     });
@@ -143,7 +141,6 @@ async function uploadToS3Vault(dataUrl, mimeType) {
 
     const { uploadUrl, s3Key } = await res.json();
 
-    // 3. Direct PUT upload to S3 bucket
     const s3Res = await fetch(uploadUrl, {
         method: "PUT",
         headers: { "Content-Type": mimeType },
@@ -185,6 +182,7 @@ receiptImageInput?.addEventListener("change", async (e) => {
         await analyzeBillWithGemini(resized.base64, resized.mimeType);
     } catch (err) {
         console.error("Vault/OCR Processing error:", err);
+        currentReceiptS3Key = ""; // Ensure key is reset on failure
         alert("Upload/Scan Error: " + err.message);
         loadingStatus.style.display = "none";
     }
@@ -219,6 +217,46 @@ async function analyzeBillWithGemini(base64Data, mimeType) {
     }
 }
 
+// 1. Converts strings like "sai shinde" -> "Sai Shinde"
+function toTitleCase(str) {
+    if (!str) return "";
+    return str
+        .toLowerCase()
+        .split(" ")
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+}
+
+// 2. Normalizes divisions/sections ("5th Diamond", "Class 10-A", "Vth") -> Canonical Standard ("5th", "10th")
+function normalizeStandard(std) {
+    if (!std) return "";
+    let s = String(std).trim().toUpperCase();
+
+    if (s.includes("NUR")) return "Nursery";
+    if (s.includes("JR") || s.includes("LKG")) return "Jr. KG";
+    if (s.includes("SR") || s.includes("UKG")) return "Sr. KG";
+
+    // Prioritize 10 over 1-9 to avoid truncating "10th" into "1st"
+    const digitMatch = s.match(/\b(10|[1-9])\b/) || s.match(/^(10|[1-9])/);
+    if (digitMatch) {
+        const num = digitMatch[1];
+        const suffixes = { "1": "1st", "2": "2nd", "3": "3rd" };
+        return suffixes[num] || `${num}th`;
+    }
+
+    const romanMap = {
+        "X": "10th", "IX": "9th", "VIII": "8th", "VII": "7th",
+        "VI": "6th", "V": "5th", "IV": "4th", "III": "3rd", "II": "2nd", "I": "1st"
+    };
+    for (const [roman, normalized] of Object.entries(romanMap)) {
+        const regex = new RegExp(`\\b${roman}\\b`, "i");
+        if (regex.test(s)) return normalized;
+    }
+
+    return toTitleCase(std);
+}
+
 // ==================================================
 // REVIEW & FORM AUTO-FILL
 // ==================================================
@@ -231,8 +269,8 @@ function populateReviewForm(data) {
 
     if (data.billNo) scannedBillNo.value = data.billNo;
     if (data.billDate) scannedBillDate.value = data.billDate;
-    if (data.studentName) scannedStudentName.value = data.studentName;
-    if (data.standard) scannedStandard.value = data.standard;
+    if (data.studentName) scannedStudentName.value = toTitleCase(data.studentName);
+    if (data.standard) scannedStandard.value = normalizeStandard(data.standard);
 
     if (data.branch && ["Hadapsar", "Loni", "Fursungi", "Urli"].includes(data.branch)) {
         scannedBranch.value = data.branch;
@@ -340,8 +378,8 @@ scannedBillForm?.addEventListener("submit", async (e) => {
         branch: scannedBranch.value.trim(),
         billDate: scannedBillDate.value.trim(),
         billNo: scannedBillNo.value.trim(),
-        studentName: scannedStudentName.value.trim(),
-        standard: scannedStandard.value.trim(),
+        studentName: toTitleCase(scannedStudentName.value.trim()),
+        standard: normalizeStandard(scannedStandard.value.trim()),
         paymentMode: scannedPaymentMode.value.trim(),
         transactionId: isOnline ? scannedTxnId.value.trim() : "",
         items,
@@ -352,7 +390,6 @@ scannedBillForm?.addEventListener("submit", async (e) => {
         payload.gender = scannedGender.value;
     }
 
-    // Attach S3 receipt key if an image was uploaded to the vault
     if (currentReceiptS3Key) {
         payload.receiptS3Key = currentReceiptS3Key;
     }

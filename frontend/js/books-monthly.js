@@ -124,6 +124,9 @@ function getMonthsInRange(fromStr, toStr) {
 async function viewReceiptImage(s3Key) {
     if (!s3Key) return alert("No original receipt image on file for this bill.");
 
+    const modal = document.getElementById("receiptModal");
+    const modalImg = document.getElementById("modalReceiptImg");
+
     try {
         const res = await fetch(`${API_BASE_URL}/receipt-url?action=view&s3Key=${encodeURIComponent(s3Key)}`, {
             headers: getAuthHeaders()
@@ -131,12 +134,32 @@ async function viewReceiptImage(s3Key) {
         const data = await res.json();
         if (!res.ok || !data.viewUrl) throw new Error(data.message || "Could not retrieve image");
 
-        window.open(data.viewUrl, "_blank");
+        // Display directly in on-screen popup modal
+        if (modal && modalImg) {
+            modalImg.src = data.viewUrl;
+            modal.style.display = "flex";
+        } else {
+            // Fallback
+            window.open(data.viewUrl, "_blank");
+        }
     } catch (err) {
         alert("Failed to load receipt: " + err.message);
     }
 }
 window.viewReceiptImage = viewReceiptImage;
+
+// Modal Close Listeners
+document.getElementById("closeReceiptModalBtn")?.addEventListener("click", () => {
+    const modal = document.getElementById("receiptModal");
+    if (modal) modal.style.display = "none";
+});
+document.getElementById("closeReceiptModalFooterBtn")?.addEventListener("click", () => {
+    const modal = document.getElementById("receiptModal");
+    if (modal) modal.style.display = "none";
+});
+document.getElementById("receiptModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "receiptModal") e.target.style.display = "none";
+});
 
 // ==================================================
 // DATA FETCHING & REPORT RENDER (CONCURRENT)

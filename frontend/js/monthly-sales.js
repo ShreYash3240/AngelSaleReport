@@ -83,7 +83,7 @@ function getAuthHeaders() {
 }
 
 // ==================================================
-// DATE UTILITIES
+// DATE UTILITIES & DATA NORMALIZATION
 // ==================================================
 function formatDate(ds) {
     if (!ds) return "";
@@ -95,6 +95,44 @@ function escapeHTML(str) {
     const div = document.createElement("div");
     div.textContent = str ?? "";
     return div.innerHTML;
+}
+
+function toTitleCase(str) {
+    if (!str) return "";
+    return str
+        .toLowerCase()
+        .split(" ")
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+}
+
+function normalizeStandard(std) {
+    if (!std) return "Other";
+    let s = String(std).trim().toUpperCase();
+
+    if (s.includes("NUR")) return "Nursery";
+    if (s.includes("JR") || s.includes("LKG")) return "Jr. KG";
+    if (s.includes("SR") || s.includes("UKG")) return "Sr. KG";
+
+    // Extract leading digit: "5th Diamond", "5th A", "5-B" -> "5th"
+    const digitMatch = s.match(/\b([1-9]|10)\b/) || s.match(/^([1-9]|10)/);
+    if (digitMatch) {
+        const num = digitMatch[1];
+        const suffixes = { "1": "1st", "2": "2nd", "3": "3rd" };
+        return suffixes[num] || `${num}th`;
+    }
+
+    const romanMap = {
+        "I": "1st", "II": "2nd", "III": "3rd", "IV": "4th", "V": "5th",
+        "VI": "6th", "VII": "7th", "VIII": "8th", "IX": "9th", "X": "10th"
+    };
+    for (const [roman, normalized] of Object.entries(romanMap)) {
+        const regex = new RegExp(`\\b${roman}\\b`, "i");
+        if (regex.test(s)) return normalized;
+    }
+
+    return toTitleCase(std);
 }
 
 function setMonthRange(year, monthIndex) {
@@ -128,8 +166,16 @@ function getMonthsInRange(fromStr, toStr) {
 // UNIFORM ITEM EXPANSION ENGINE
 // ==================================================
 function isJuniorBoyStandard(std) {
-    const juniors = new Set(["NURSERY", "JR. KG.", "SR. KG.", "LKG", "UKG", "I", "II", "III", "IV", "V", "VI", "1ST", "2ND", "3RD", "4TH", "5TH", "6TH"]);
-    return juniors.has(String(std || "").trim().toUpperCase());
+    const s = String(std || "").trim().toUpperCase();
+    const juniors = new Set([
+        "NURSERY", "JR. KG", "JR. KG.", "SR. KG", "SR. KG.", "LKG", "UKG", 
+        "1ST", "2ND", "3RD", "4TH", "5TH", "6TH", 
+        "I", "II", "III", "IV", "V", "VI"
+    ]);
+    for (const jr of juniors) {
+        if (s.startsWith(jr)) return true;
+    }
+    return false;
 }
 
 function expandBillItems(bill) {
@@ -140,30 +186,58 @@ function expandBillItems(bill) {
     const isJuniorBoy = isJuniorBoyStandard(bill.standard);
 
     (bill.items || []).forEach(item => {
-        const name = (item.name || "").trim().toUpperCase();
+        let name = (item.name || "").trim().toUpperCase();
         const qty = Number(item.quantity) || 0;
         if (qty <= 0) return;
 
-        if (name === "SET" || name === "UNIFORM SET") {
+        // 1. SET / UNIFORM SET
+        if (name === "SET" || name === "UNIFORM SET" || name.includes("FULL SET")) {
             expanded["SHIRT"] += qty;
-            if (isGirl) expanded["SKIRT"] += qty;
-            else if (isJuniorBoy) expanded["HALF PANTS"] += qty;
-            else expanded["FULL PANTS"] += qty;
+            if (isGirl) {
+                expanded["SKIRT"] += qty;
+            } else if (isJuniorBoy) {
+                expanded["HALF PANTS"] += qty;
+            } else {
+                expanded["FULL PANTS"] += qty;
+            }
             expanded["SHOES"] += qty;
             expanded["SOCKS"] += qty;
-        } else if (name === "SHIRT & PANT" || name === "SHIRT, PANT") {
+        } 
+        // 2. SHIRT & PANT
+        else if (name === "SHIRT & PANT" || name === "SHIRT, PANT" || name === "SHIRT PANT") {
             expanded["SHIRT"] += qty;
-            if (isJuniorBoy) expanded["HALF PANTS"] += qty;
-            else expanded["FULL PANTS"] += qty;
-        } else if (name === "SHIRT & SKIRT" || name === "SHIRT, SKIRT") {
+            if (isJuniorBoy) {
+                expanded["HALF PANTS"] += qty;
+            } else {
+                expanded["FULL PANTS"] += qty;
+            }
+        } 
+        // 3. SHIRT & SKIRT
+        else if (name === "SHIRT & SKIRT" || name === "SHIRT, SKIRT") {
             expanded["SHIRT"] += qty;
             expanded["SKIRT"] += qty;
-        } else if (name === "SHOES & SOCKS" || name === "SHOES, SOCKS") {
+        } 
+        // 4. SHOES & SOCKS / ONLY SHOES SET / SHOES SET
+        else if (
+            name === "SHOES & SOCKS" || 
+            name === "SHOES, SOCKS" || 
+            name.includes("SHOES SET") || 
+            name.includes("ONLY SHOES SET") ||
+            name === "SHOES AND SOCKS"
+        ) {
             expanded["SHOES"] += qty;
             expanded["SOCKS"] += qty;
-        } else if (name === "ONLY SOCKS") {
+        } 
+        // 5. ONLY SHOES (without socks)
+        else if (name === "ONLY SHOES" || name === "SHOES") {
+            expanded["SHOES"] += qty;
+        }
+        // 6. ONLY SOCKS / SOCKS
+        else if (name === "ONLY SOCKS" || name === "SOCKS") {
             expanded["SOCKS"] += qty;
-        } else {
+        } 
+        // 7. Direct Matches (BLAZZER, BELT, PT SHIRT, PT PANT)
+        else {
             let normalized = name.replace(/-/g, " ");
             if (normalized === "BLEZZER") normalized = "BLAZZER";
             if (normalized === "PT SHIRTS") normalized = "PT SHIRT";
@@ -179,10 +253,13 @@ function expandBillItems(bill) {
 }
 
 // ==================================================
-// S3 VAULT PRE-SIGNED URL VIEWER
+// S3 VAULT PRE-SIGNED URL VIEWER (IN-PAGE MODAL)
 // ==================================================
 async function viewReceiptImage(s3Key) {
     if (!s3Key) return alert("No original receipt image on file for this bill.");
+
+    const modal = document.getElementById("receiptModal");
+    const modalImg = document.getElementById("modalReceiptImg");
 
     try {
         const res = await fetch(`${API_BASE_URL}/receipt-url?action=view&s3Key=${encodeURIComponent(s3Key)}`, {
@@ -191,12 +268,32 @@ async function viewReceiptImage(s3Key) {
         const data = await res.json();
         if (!res.ok || !data.viewUrl) throw new Error(data.message || "Could not retrieve image");
 
-        window.open(data.viewUrl, "_blank");
+        // Display directly in on-screen popup modal
+        if (modal && modalImg) {
+            modalImg.src = data.viewUrl;
+            modal.style.display = "flex";
+        } else {
+            // Fallback
+            window.open(data.viewUrl, "_blank");
+        }
     } catch (err) {
         alert("Failed to load receipt: " + err.message);
     }
 }
 window.viewReceiptImage = viewReceiptImage;
+
+// Modal Close Listeners
+document.getElementById("closeReceiptModalBtn")?.addEventListener("click", () => {
+    const modal = document.getElementById("receiptModal");
+    if (modal) modal.style.display = "none";
+});
+document.getElementById("closeReceiptModalFooterBtn")?.addEventListener("click", () => {
+    const modal = document.getElementById("receiptModal");
+    if (modal) modal.style.display = "none";
+});
+document.getElementById("receiptModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "receiptModal") e.target.style.display = "none";
+});
 
 // ==================================================
 // DATA FETCHING & REPORT RENDER
@@ -294,8 +391,8 @@ function renderReportTable(bills) {
             <td>${formatDate(bill.billDate)}</td>
             <td>${escapeHTML(bill.branch || "-")}</td>
             <td><strong>${escapeHTML(bill.billNo)}</strong></td>
-            <td><strong>${escapeHTML(bill.studentName || "-")}</strong></td>
-            <td>${escapeHTML(bill.standard || "-")}</td>
+            <td><strong>${escapeHTML(toTitleCase(bill.studentName) || "-")}</strong></td>
+            <td>${escapeHTML(normalizeStandard(bill.standard))}</td>
             <td>${escapeHTML(bill.gender || "")}</td>
             <td>${escapeHTML(bill.paymentMode || "")}</td>
             <td>${escapeHTML(bill.transactionId || "-")}</td>
@@ -339,7 +436,7 @@ function renderUniformsChart() {
     if (type === "bar") {
         const stdTotals = {};
         cachedUniformBills.forEach(b => {
-            const std = b.standard || "Other";
+            const std = normalizeStandard(b.standard);
             stdTotals[std] = (stdTotals[std] || 0) + (Number(b.total) || 0);
         });
 
@@ -534,8 +631,8 @@ function exportUniformXlsx() {
         const row = {
             "Bill No.": bill.billNo || "",
             "Branch": bill.branch || "",
-            "Student Name": bill.studentName || "",
-            "Standard": bill.standard || "",
+            "Student Name": toTitleCase(bill.studentName) || "",
+            "Standard": normalizeStandard(bill.standard) || "",
             "Gender": bill.gender || "",
             "Payment Mode": bill.paymentMode || "",
             "Transaction ID": bill.transactionId || "",
