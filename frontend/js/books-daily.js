@@ -116,31 +116,19 @@ function normalizeStandard(std) {
 // ==================================================
 // CLASS-SPECIFIC BOOK ITEMS FILTERING
 // ==================================================
-function getStandardKey(stdRaw) {
-    if (!stdRaw) return "";
-    let s = stdRaw.toUpperCase();
-    if (s.includes("NUR")) return "NURSERY";
-    if (s.includes("JR") || s.includes("LKG")) return "JR. KG";
-    if (s.includes("SR") || s.includes("UKG")) return "SR. KG";
-    
-    // Clean up roman numerals / digits
-    return s.replace(/[^A-Z0-9]/g, "");
-}
-
 function getItemsForStandard(stdRaw) {
-    if (!stdRaw) return [];
-    
-    let stdKey = stdRaw.toUpperCase();
-    if (stdKey.includes("NUR")) stdKey = "NURSERY";
-    else if (stdKey.includes("JR") || stdKey.includes("LKG")) stdKey = "JR. KG";
-    else if (stdKey.includes("SR") || stdKey.includes("UKG")) stdKey = "SR. KG";
+    let availableItems = ["TEXTBOOKS SET", "NOTEBOOK SET"];
 
-    let availableItems = ["TOTAL AMOUNT", "TEXTBOOKS SET", "NOTEBOOK SET"];
+    if (stdRaw) {
+        let stdKey = stdRaw.toUpperCase();
+        if (stdKey.includes("NUR")) stdKey = "NURSERY";
+        else if (stdKey.includes("JR") || stdKey.includes("LKG")) stdKey = "JR. KG";
+        else if (stdKey.includes("SR") || stdKey.includes("UKG")) stdKey = "SR. KG";
 
-    // Append granular individual books for this standard from prices.js if available
-    if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[stdKey]) {
-        const granularBooks = Object.keys(BOOK_ITEMS_BREAKDOWN[stdKey]);
-        availableItems = availableItems.concat(granularBooks);
+        if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[stdKey]) {
+            const granularBooks = Object.keys(BOOK_ITEMS_BREAKDOWN[stdKey]);
+            availableItems = availableItems.concat(granularBooks);
+        }
     }
 
     return availableItems;
@@ -185,15 +173,10 @@ function createBookItemRow() {
     select.className = "item-name";
     select.required = true;
 
-    if (!std) {
-        select.innerHTML = `<option value="">Select Standard First</option>`;
-        select.disabled = true;
-    } else {
-        const items = getItemsForStandard(std);
-        select.innerHTML = `<option value="">Select Book Item</option>` + 
-            items.map(i => `<option value="${i}">${i}</option>`).join("");
-        select.disabled = false;
-    }
+    const items = getItemsForStandard(std);
+    select.innerHTML = `<option value="">Select Book Item</option>` + 
+        items.map(i => `<option value="${i}">${i}</option>`).join("");
+    select.disabled = false;
 
     const qty = document.createElement("select");
     qty.className = "item-qty";
@@ -208,6 +191,9 @@ function createBookItemRow() {
     amt.step = "0.01";
     amt.placeholder = "0.00";
     amt.required = true;
+    amt.style.backgroundColor = "#ffffff";
+    amt.style.fontWeight = "bold";
+    amt.style.color = "#0f172a";
 
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
@@ -220,10 +206,6 @@ function createBookItemRow() {
 }
 
 function addBookItemRow() {
-    if (!standard.value.trim()) {
-        alert("Please select a Standard first before adding items.");
-        return standard.focus();
-    }
     itemsContainer.appendChild(createBookItemRow());
     updateTotal();
 }
@@ -231,26 +213,20 @@ function addBookItemRow() {
 function updateAllRowItemDropdowns() {
     const std = standard.value.trim();
     const rows = itemsContainer.querySelectorAll(".item-row");
-    const items = std ? getItemsForStandard(std) : [];
+    const items = getItemsForStandard(std);
 
     rows.forEach(row => {
         const select = row.querySelector(".item-name");
         const prevVal = select.value;
 
-        if (!std) {
-            select.innerHTML = `<option value="">Select Standard First</option>`;
-            select.disabled = true;
-            select.value = "";
+        select.disabled = false;
+        select.innerHTML = `<option value="">Select Book Item</option>` + 
+            items.map(i => `<option value="${i}">${i}</option>`).join("");
+        
+        if (items.includes(prevVal)) {
+            select.value = prevVal;
         } else {
-            select.disabled = false;
-            select.innerHTML = `<option value="">Select Book Item</option>` + 
-                items.map(i => `<option value="${i}">${i}</option>`).join("");
-            
-            if (items.includes(prevVal)) {
-                select.value = prevVal;
-            } else {
-                select.value = "";
-            }
+            select.value = "";
         }
     });
     syncAndRecalculateBooks();
