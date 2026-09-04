@@ -114,32 +114,59 @@ function normalizeStandard(std) {
 }
 
 // ==================================================
-// PRICING LOOKUP (BOOKS)
+// PRICING LOOKUP (BOOKS) - SYNCED WITH prices.js
 // ==================================================
 function getAvailableBookItems() {
     return [
         "TOTAL AMOUNT",
         "TEXTBOOKS SET",
         "NOTEBOOK SET",
-        "ENGLISH TEXTBOOK",
-        "MATHS TEXTBOOK",
-        "SCIENCE TEXTBOOK",
-        "MARATHI TEXTBOOK",
-        "HINDI TEXTBOOK",
-        "SOCIAL SCIENCE TEXTBOOK",
-        "DRAWING BOOK",
-        "SINGLE LINE NOTEBOOK",
-        "FOUR LINE NOTEBOOK",
-        "SQUARE NOTEBOOK"
+        // Granular fallback options mapped from BOOK_ITEMS_BREAKDOWN
+        "Calyx - Foundational Stage Nursery",
+        "Calyx - Foundational Stage LKG",
+        "Calyx - Foundational Stage UKG",
+        "Melons (Semester I)",
+        "Melons (Semester II)",
+        "Communicate in English",
+        "Interactive Grammar & More",
+        "Bansuri (Hindi)",
+        "Shivai (Marathi)",
+        "New Direction Mathematics",
+        "New Direction Science",
+        "My Big Book of Social Science",
+        "Computer Project Booklet - 3 in 1",
+        "Artistic (Art & Activity)",
+        "Health Education",
+        "Magic English Language (Karadi Path)"
     ];
 }
 
 function getBookUnitPrice(itemName) {
     if (!itemName) return 0;
-    const std = standard.value.trim();
-    if (!std) return 0;
+    const stdRaw = standard.value.trim();
+    if (!stdRaw) return 0;
 
-    return typeof BOOK_PRICE_MATRIX !== "undefined" ? (BOOK_PRICE_MATRIX[std]?.[itemName] ?? 0) : 0;
+    // Normalize standard format to match BOOK_PRICE_MATRIX keys in prices.js ("NURSERY", "JR. KG", "SR. KG", "I", "II"...)
+    let stdKey = stdRaw.toUpperCase();
+    if (stdKey.includes("NUR")) stdKey = "NURSERY";
+    else if (stdKey.includes("JR") || stdKey.includes("LKG")) stdKey = "JR. KG";
+    else if (stdKey.includes("SR") || stdKey.includes("UKG")) stdKey = "SR. KG";
+
+    // 1. Check Bundle/Standard Price Matrix first
+    if (typeof BOOK_PRICE_MATRIX !== "undefined" && BOOK_PRICE_MATRIX[stdKey]) {
+        if (BOOK_PRICE_MATRIX[stdKey][itemName] !== undefined) {
+            return BOOK_PRICE_MATRIX[stdKey][itemName];
+        }
+    }
+
+    // 2. Check Granular Individual Breakdown Matrix next
+    if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[stdKey]) {
+        if (BOOK_ITEMS_BREAKDOWN[stdKey][itemName] !== undefined) {
+            return BOOK_ITEMS_BREAKDOWN[stdKey][itemName];
+        }
+    }
+
+    return 0;
 }
 
 // ==================================================
@@ -302,7 +329,7 @@ function showDigitalReceiptSlip(bill) {
     const minRows = 4;
     const totalRows = Math.max(items.length, minRows);
 
-            for (let i = 0; i < totalRows; i++) {
+    for (let i = 0; i < totalRows; i++) {
         const tr = document.createElement("tr");
         tr.style.height = "22px";
 
@@ -325,7 +352,6 @@ function showDigitalReceiptSlip(bill) {
         }
         tbody.appendChild(tr);
     }
-
 
     if (bill.paymentMode === "Online") {
         const trPay = document.createElement("tr");
