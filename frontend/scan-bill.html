@@ -81,15 +81,16 @@
         </header>
 
         <!-- Image Upload & Camera Area -->
+                <!-- Image Upload & Camera Area -->
         <section class="card">
             <h2>1. Capture or Select Bill Image</h2>
-            <div class="scanner-card" id="dropArea" onclick="document.getElementById('receiptImageInput').click()">
+            <label class="scanner-card" id="dropArea" for="receiptImageInput" style="display: block;">
                 <div style="font-size: 2.2rem; margin-bottom: 8px;">📸</div>
                 <h3 style="color: #1e293b; font-size: 1.1rem; margin-bottom: 4px;">Click to Snap a Photo or Upload Image</h3>
                 <p class="items-help">Works with phone cameras, printed bills, and handwritten receipts</p>
                 <input type="file" id="receiptImageInput" accept="image/*" capture="environment" style="display: none;" />
                 <img id="imagePreview" class="preview-box" alt="Receipt preview" />
-            </div>
+            </label>
 
             <div id="loadingStatus" style="display: none; text-align: center; padding: 12px; color: var(--crest-blue); font-weight: 700;">
                 ⏳ Gemini is analyzing handwriting and items... Please wait.
