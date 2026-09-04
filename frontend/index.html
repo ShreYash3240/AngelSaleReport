@@ -210,22 +210,22 @@
             </div>
         </div>
 
-        <!-- Physical Slip Clone Container (Compact & Scaled Down) -->
+        <!-- Physical Slip Clone Container -->
         <div id="printableSlipArea" style="padding: 12px; background: #ffffff; overflow-y: auto;">
-            <div class="receipt-border-box" style="border: 2px solid #000; border-radius: 8px; padding: 10px 10px 6px 10px; font-family: 'Arial', sans-serif; color: #000; background: #fff; font-size: 0.75rem;">
+            <div class="receipt-border-box" style="border: 2px solid #000; border-radius: 8px; padding: 10px 10px 6px 10px; font-family: 'Arial', sans-serif; color: #000; background: #fff; font-size: 0.72rem; box-sizing: border-box;">
                 
                 <!-- Header -->
                 <div style="text-align: center;">
-                    <h2 style="margin: 0; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase;">SHREE GAJANAN ENTERPRISES</h2>
-                    <p style="margin: 2px 0 0 0; font-size: 0.58rem; line-height: 1.2; font-weight: 600;">Ward No. 03, Circuit House Marg Wardha, Maharashtra</p>
+                    <h2 style="margin: 0; font-size: 0.92rem; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase;">SHREE GAJANAN ENTERPRISES</h2>
+                    <p style="margin: 2px 0 0 0; font-size: 0.56rem; line-height: 1.2; font-weight: 600;">Ward No. 03, Circuit House Marg Wardha, Maharashtra</p>
                 </div>
 
-                <div style="border-top: 1.5px solid #000; margin: 6px -10px 6px -10px;"></div>
+                <div style="border-top: 1.2px solid #000; margin: 6px -10px 6px -10px;"></div>
 
                 <!-- Bill Date & Bill No -->
                 <div style="display: flex; justify-content: space-between; align-items: baseline; font-weight: bold; margin-bottom: 3px;">
                     <div>Bill Date : <span id="slipDate" style="font-weight: 700;">-</span></div>
-                    <div>Bill No : <span id="slipBillNo" style="font-size: 0.85rem; font-weight: 900;">-</span></div>
+                    <div>Bill No : <span id="slipBillNo" style="font-size: 0.82rem; font-weight: 900;">-</span></div>
                 </div>
 
                 <!-- Student Name -->
@@ -240,14 +240,14 @@
                     <span id="slipStd" style="border-bottom: 1px solid #000; flex-grow: 1; margin-left: 4px; padding-left: 3px; font-weight: 600;">-</span>
                 </div>
 
-                <!-- Table (Properly Sized Columns for Qty & Amount) -->
-                <table style="width: 100%; border-collapse: collapse; border: 1.2px solid #000; font-size: 0.75rem;">
+                <!-- Table with table-layout: fixed to keep columns visible and aligned -->
+                <table style="width: 100%; table-layout: fixed; border-collapse: collapse; border: 1.2px solid #000; font-size: 0.72rem;">
                     <thead>
                         <tr style="border-bottom: 1.2px solid #000;">
-                            <th style="width: 12%; border-right: 1.2px solid #000; padding: 3px 1px; text-align: center; font-weight: bold;">Sr.</th>
-                            <th style="width: 46%; border-right: 1.2px solid #000; padding: 3px 4px; text-align: left; font-weight: bold;">Particulars</th>
-                            <th style="width: 16%; border-right: 1.2px solid #000; padding: 3px 1px; text-align: center; font-weight: bold;">Qty</th>
-                            <th style="width: 26%; padding: 3px 2px; text-align: center; font-weight: bold;">Amount</th>
+                            <th style="width: 12%; border-right: 1.2px solid #000; padding: 3px 1px; text-align: center; font-weight: bold; overflow: hidden;">Sr.</th>
+                            <th style="width: 48%; border-right: 1.2px solid #000; padding: 3px 4px; text-align: left; font-weight: bold; overflow: hidden;">Particulars</th>
+                            <th style="width: 15%; border-right: 1.2px solid #000; padding: 3px 1px; text-align: center; font-weight: bold; overflow: hidden;">Qty</th>
+                            <th style="width: 25%; padding: 3px 2px; text-align: center; font-weight: bold; overflow: hidden;">Amount</th>
                         </tr>
                     </thead>
                     <tbody id="slipItemsBody">
@@ -256,20 +256,20 @@
                     <tfoot>
                         <tr style="border-top: 1.2px solid #000;">
                             <td colspan="2" style="border-right: 1.2px solid #000; padding: 0;"></td>
-                            <td style="border-right: 1.2px solid #000; padding: 4px 1px; text-align: center; font-weight: 900; font-size: 0.8rem;">Total</td>
-                            <td id="slipTotalAmount" style="padding: 4px 2px; text-align: center; font-weight: 900; font-size: 0.85rem;">-</td>
+                            <td style="border-right: 1.2px solid #000; padding: 4px 1px; text-align: center; font-weight: 900; font-size: 0.78rem;">Total</td>
+                            <td id="slipTotalAmount" style="padding: 4px 2px; text-align: center; font-weight: 900; font-size: 0.82rem;">-</td>
                         </tr>
                     </tfoot>
                 </table>
 
                 <!-- Bottom Notice and Signature Footer -->
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 8px;">
-                    <div style="font-size: 0.55rem; line-height: 1.2; font-weight: bold; max-width: 55%;">
+                    <div style="font-size: 0.53rem; line-height: 1.2; font-weight: bold; max-width: 55%;">
                         Note : No exchange or return on books / Note Book once purchased.
                     </div>
                     <div style="text-align: center; min-width: 80px;">
-                        <div style="color: #1e3a8a; font-family: 'Brush Script MT', cursive, sans-serif; font-size: 0.95rem; height: 18px; line-height: 18px;">Approved</div>
-                        <div style="border-top: 1.2px solid #000; font-size: 0.68rem; font-weight: bold; padding-top: 1px;">Signature</div>
+                        <div style="color: #1e3a8a; font-family: 'Brush Script MT', cursive, sans-serif; font-size: 0.9rem; height: 16px; line-height: 16px;">Approved</div>
+                        <div style="border-top: 1.2px solid #000; font-size: 0.65rem; font-weight: bold; padding-top: 1px;">Signature</div>
                     </div>
                 </div>
 
@@ -277,7 +277,6 @@
         </div>
     </div>
 </div>
-
 
 <script src="js/prices.js"></script>
 <script src="js/app.js"></script>
