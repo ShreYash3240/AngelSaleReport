@@ -80,7 +80,9 @@ function getAuthHeaders() {
 // ==================================================
 // CLIENT-SIDE IMAGE COMPRESSION (Max 1400px, < 1MB)
 // ==================================================
-function resizeImage(file, maxWidth = 1400, quality = 0.8) {
+
+// Scale image to max 1024px and compress to ~200-300KB
+function resizeImage(file, maxWidth = 1024, quality = 0.65) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
