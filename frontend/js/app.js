@@ -340,7 +340,7 @@ function showDigitalReceiptSlip(bill) {
     const minRows = 4;
     const totalRows = Math.max(items.length, minRows);
 
-        for (let i = 0; i < totalRows; i++) {
+            for (let i = 0; i < totalRows; i++) {
         const tr = document.createElement("tr");
         tr.style.height = "22px";
 
@@ -348,18 +348,17 @@ function showDigitalReceiptSlip(bill) {
             const item = items[i];
             const sizeStr = item.size ? ` (${item.size})` : "";
             tr.innerHTML = `
-                <td style=style="width: 5%; "border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.68rem; padding: 2px 1px; overflow: hidden; box-sizing: border-box;">${i + 1}</td>
-                <td style=style="width: 32%; "border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; padding: 2px 3px; font-weight: 600; font-size: 0.68rem; overflow: hidden; box-sizing: border-box; text-overflow: ellipsis; white-space: nowrap;">${item.name}${sizeStr}</td>
-                <td style=style="width: 8%; "border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.68rem; padding: 2px 1px; overflow: hidden; box-sizing: border-box;">${item.quantity || 1}</td>
-                <td style=style="width: 15%; "border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.7rem; padding: 2px 2px; overflow: hidden; box-sizing: border-box;">${Number(item.amount || 0)}</td>
+                <td style="width: 10%; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.68rem; padding: 2px 1px; overflow: hidden; box-sizing: border-box;">${i + 1}</td>
+                <td style="width: 48%; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; padding: 2px 3px; font-weight: 600; font-size: 0.68rem; overflow: hidden; box-sizing: border-box; text-overflow: ellipsis; white-space: nowrap;">${item.name}${sizeStr}</td>
+                <td style="width: 14%; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.68rem; padding: 2px 1px; overflow: hidden; box-sizing: border-box;">${item.quantity || 1}</td>
+                <td style="width: 28%; border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700; font-size: 0.7rem; padding: 2px 2px; overflow: hidden; box-sizing: border-box;">${Number(item.amount || 0)}</td>
             `;
-
         } else {
             tr.innerHTML = `
-                <td style="border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
-                <td style="border-right: 1.2px solid #000; border-bottom: 1px실#cbd5e1;"></td>
-                <td style="border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
-                <td style="border-bottom: 1px solid #cbd5e1;"></td>
+                <td style="width: 10%; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 48%; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 14%; border-right: 1.2px solid #000; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
+                <td style="width: 28%; border-bottom: 1px solid #cbd5e1; box-sizing: border-box;"></td>
             `;
         }
         tbody.appendChild(tr);
