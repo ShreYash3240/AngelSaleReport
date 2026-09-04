@@ -114,13 +114,13 @@ function normalizeStandard(std) {
 }
 
 // ==================================================
-// CLASS-SPECIFIC BOOK ITEMS FILTERING
+// CLASS-SPECIFIC BOOK ITEMS FILTERING & PRICING
 // ==================================================
 function getItemsForStandard(stdRaw) {
     let availableItems = ["TEXTBOOKS SET", "NOTEBOOK SET"];
 
     if (stdRaw) {
-        let stdKey = stdRaw.toUpperCase();
+        let stdKey = stdRaw.trim().toUpperCase();
         if (stdKey.includes("NUR")) stdKey = "NURSERY";
         else if (stdKey.includes("JR") || stdKey.includes("LKG")) stdKey = "JR. KG";
         else if (stdKey.includes("SR") || stdKey.includes("UKG")) stdKey = "SR. KG";
@@ -139,22 +139,25 @@ function getBookUnitPrice(itemName) {
     const stdRaw = standard.value.trim();
     if (!stdRaw) return 0;
 
-    let stdKey = stdRaw.toUpperCase();
+    let stdKey = stdRaw.trim().toUpperCase();
     if (stdKey.includes("NUR")) stdKey = "NURSERY";
     else if (stdKey.includes("JR") || stdKey.includes("LKG")) stdKey = "JR. KG";
     else if (stdKey.includes("SR") || stdKey.includes("UKG")) stdKey = "SR. KG";
 
-    // 1. Check Standard Bundle Price Matrix
-    if (typeof BOOK_PRICE_MATRIX !== "undefined" && BOOK_PRICE_MATRIX[stdKey]) {
-        if (BOOK_PRICE_MATRIX[stdKey][itemName] !== undefined) {
-            return BOOK_PRICE_MATRIX[stdKey][itemName];
+    // 1. Check Standard Bundle Price Matrix (BOOKS_PRICE_MATRIX)
+    if (typeof BOOKS_PRICE_MATRIX !== "undefined") {
+        // Try direct key or capitalized key lookups safely
+        const bundleMatrix = BOOKS_PRICE_MATRIX[stdKey] || BOOKS_PRICE_MATRIX[stdRaw] || BOOKS_PRICE_MATRIX[stdRaw.toUpperCase()];
+        if (bundleMatrix && bundleMatrix[itemName] !== undefined) {
+            return Number(bundleMatrix[itemName]) || 0;
         }
     }
 
-    // 2. Check Granular Individual Breakdown Matrix
-    if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[stdKey]) {
-        if (BOOK_ITEMS_BREAKDOWN[stdKey][itemName] !== undefined) {
-            return BOOK_ITEMS_BREAKDOWN[stdKey][itemName];
+    // 2. Check Granular Individual Breakdown Matrix (BOOK_ITEMS_BREAKDOWN)
+    if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined") {
+        const itemMatrix = BOOK_ITEMS_BREAKDOWN[stdKey] || BOOK_ITEMS_BREAKDOWN[stdRaw] || BOOK_ITEMS_BREAKDOWN[stdRaw.toUpperCase()];
+        if (itemMatrix && itemMatrix[itemName] !== undefined) {
+            return Number(itemMatrix[itemName]) || 0;
         }
     }
 
