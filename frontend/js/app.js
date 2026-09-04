@@ -366,7 +366,7 @@ function showDigitalReceiptSlip(bill) {
 
     const slipArea = document.getElementById("printableSlipArea");
     slipArea.innerHTML = `
-        <div class="receipt-border-box" style="border: 2px solid #000; border-radius: 8px; padding: 10px 8px 8px 8px; font-family: 'Arial', sans-serif; color: #000; background: #fff; font-size: 0.72rem; box-sizing: border-box; width: 100%; max-width: 380px; margin: 0 auto;">
+        <div class="receipt-border-box" style="border: 2px solid #000; border-radius: 8px; padding: 10px 8px 8px 8px; font-family: 'Arial', sans-serif; color: #000; background: #fff; font-size: 0.72rem; box-sizing: border-box; width: 100%; max-width: 680px; margin: 0 auto;">
             <div style="text-align: center;">
                 <h2 style="margin: 0; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase;">SHREE GAJANAN ENTERPRISES</h2>
                 <p style="margin: 3px 0 0 0; font-size: 0.58rem; line-height: 1.15; font-weight: 600;">Ward No. 03, Circuit House Marg Wardha, Maharashtra</p>
