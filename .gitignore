@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 backend/node_modules/
+frontend/js/config.js
 
 # OS and Editor metadata
 .DS_Store

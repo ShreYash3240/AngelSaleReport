@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Sales Portal | Smart Bill Scanner</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/images/school logo.png" />
+    <style>
+        .scanner-card {
+            border: 2px dashed #93c5fd;
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            border-radius: var(--radius-card);
+            margin-bottom: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .scanner-card:hover {
+            background: #eff6ff;
+            border-color: var(--crest-blue);
+        }
+        .preview-box {
+            display: none;
+            margin-top: 15px;
+            max-height: 280px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            object-fit: contain;
+        }
+        .confidence-banner {
+            display: none;
+            padding: 12px 18px;
+            border-radius: 10px;
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            color: #92400e;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-brand">
+            👋 Welcome, <span id="userEmailDisplay" class="welcome-user">Accountant</span>
+        </div>
+        <nav class="nav-links">
+            <div class="nav-dropdown">
+                <button type="button" class="nav-dropbtn">Uniform ▾</button>
+                <div class="dropdown-menu">
+                    <a href="/index.html" class="dropdown-item">Daily Sales</a>
+                    <a href="/monthly-sales.html" class="dropdown-item">Monthly Report</a>
+                </div>
+            </div>
+            <div class="nav-dropdown">
+                <button type="button" class="nav-dropbtn">Books ▾</button>
+                <div class="dropdown-menu">
+                    <a href="/books-daily.html" class="dropdown-item">Daily Sales</a>
+                    <a href="/books-monthly.html" class="dropdown-item">Monthly Report</a>
+                </div>
+            </div>
+            <a href="/scan-bill.html" class="dropdown-item active" style="font-weight: 700; color: var(--crest-blue);">📷 Scanner</a>
+            <button id="authBtn" type="button" class="logout-btn">Logout</button>
+        </nav>
+    </header>
+
+    <div id="appContainer" style="display: none;">
+        <header class="header">
+            <div class="header-title-box">
+                <h1>AI Paper Bill Scanner</h1>
+                <p>Digitize and archive physical paper receipts into DynamoDB</p>
+            </div>
+            <div class="school-crest-badge">
+                <img src="assets/images/school logo.png" alt="Angel High School Crest" />
+                <span>Work is Worship</span>
+            </div>
+        </header>
+
+        <!-- Image Upload & Camera Area -->
+        <section class="card">
+            <h2>1. Capture or Select Bill Image</h2>
+            <div class="scanner-card" id="dropArea" onclick="document.getElementById('receiptImageInput').click()">
+                <div style="font-size: 2.2rem; margin-bottom: 8px;">📸</div>
+                <h3 style="color: #1e293b; font-size: 1.1rem; margin-bottom: 4px;">Click to Snap a Photo or Upload Image</h3>
+                <p class="items-help">Works with phone cameras, printed bills, and handwritten receipts</p>
+                <input type="file" id="receiptImageInput" accept="image/*" capture="environment" style="display: none;" />
+                <img id="imagePreview" class="preview-box" alt="Receipt preview" />
+            </div>
+
+            <div id="loadingStatus" style="display: none; text-align: center; padding: 12px; color: var(--crest-blue); font-weight: 700;">
+                ⏳ Gemini is analyzing handwriting and items... Please wait.
+            </div>
+        </section>
+
+        <!-- Verification and Confirmation Form -->
+        <section class="card" id="reviewCard" style="display: none;">
+            <h2>2. Review Extracted Data & Save</h2>
+            <div class="confidence-banner" id="reviewWarning">
+                ⚠️ <strong>Verification Required:</strong> Always verify prices and standard numbers extracted from handwriting before saving.
+            </div>
+
+            <form id="scannedBillForm">
+                <div class="bill-info">
+                    <div class="form-group">
+                        <label for="scannedDept">Department *</label>
+                        <select id="scannedDept" required>
+                            <option value="Uniform">Uniform</option>
+                            <option value="Books">Books</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scannedBranch">Branch *</label>
+                        <select id="scannedBranch" required>
+                            <option value="">Select Branch</option>
+                            <option value="Hadapsar">Hadapsar</option>
+                            <option value="Loni">Loni</option>
+                            <option value="Fursungi">Fursungi</option>
+                            <option value="Urli">Urli</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scannedBillNo">Bill No. *</label>
+                        <input type="text" id="scannedBillNo" placeholder="e.g. U0120 or B0042" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scannedBillDate">Bill Date *</label>
+                        <input type="date" id="scannedBillDate" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scannedStudentName">Student Name</label>
+                        <input type="text" id="scannedStudentName" placeholder="Full student name" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scannedStandard">Standard *</label>
+                        <input type="text" id="scannedStandard" placeholder="e.g. V, VII, jr. kg." required />
+                    </div>
+
+                    <div class="form-group" id="genderGroup">
+                        <label for="scannedGender">Gender</label>
+                        <select id="scannedGender">
+                            <option value="BOYS">BOYS</option>
+                            <option value="GIRLS">GIRLS</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="scannedPaymentMode">Payment Mode *</label>
+                        <select id="scannedPaymentMode" required>
+                            <option value="Cash">Cash</option>
+                            <option value="Online">Online</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="txnGroup" style="display: none;">
+                        <label for="scannedTxnId">Transaction ID *</label>
+                        <input type="text" id="scannedTxnId" placeholder="UPI / Ref No." />
+                    </div>
+                </div>
+
+                <!-- Items Breakdown -->
+                <div class="items-section">
+                    <div class="items-header">
+                        <div>
+                            <h3>Extracted Line Items</h3>
+                            <p class="items-help">Adjust quantities or prices if handwritten numbers were unclear</p>
+                        </div>
+                        <button type="button" id="addScannedItemBtn" class="add-item-btn">+ Add Item</button>
+                    </div>
+
+                    <div class="item-row item-header-row">
+                        <div>Item Name</div>
+                        <div>Size</div>
+                        <div>Qty</div>
+                        <div>Amount (₹)</div>
+                        <div></div>
+                    </div>
+
+                    <div id="scannedItemsContainer"></div>
+
+                    <div class="bill-total">
+                        <span>Total</span>
+                        <strong id="scannedBillTotal">₹0.00</strong>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="save-btn" id="confirmSaveBtn">Commit to Database</button>
+                        <button type="button" id="discardBtn" class="clear-btn">Discard</button>
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        <footer>
+            <p>© 2026 School Sales Portal • Document Digitization</p>
+        </footer>
+    </div>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/scan-bill.js"></script>
+
+</body>
+</html>
