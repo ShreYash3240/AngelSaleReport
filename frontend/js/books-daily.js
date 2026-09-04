@@ -114,31 +114,36 @@ function normalizeStandard(std) {
 }
 
 // ==================================================
-// PRICING LOOKUP (BOOKS) - SYNCED WITH prices.js
+// CLASS-SPECIFIC BOOK ITEMS FILTERING
 // ==================================================
-function getAvailableBookItems() {
-    return [
-        "TOTAL AMOUNT",
-        "TEXTBOOKS SET",
-        "NOTEBOOK SET",
-        // Granular fallback options mapped from BOOK_ITEMS_BREAKDOWN
-        "Calyx - Foundational Stage Nursery",
-        "Calyx - Foundational Stage LKG",
-        "Calyx - Foundational Stage UKG",
-        "Melons (Semester I)",
-        "Melons (Semester II)",
-        "Communicate in English",
-        "Interactive Grammar & More",
-        "Bansuri (Hindi)",
-        "Shivai (Marathi)",
-        "New Direction Mathematics",
-        "New Direction Science",
-        "My Big Book of Social Science",
-        "Computer Project Booklet - 3 in 1",
-        "Artistic (Art & Activity)",
-        "Health Education",
-        "Magic English Language (Karadi Path)"
-    ];
+function getStandardKey(stdRaw) {
+    if (!stdRaw) return "";
+    let s = stdRaw.toUpperCase();
+    if (s.includes("NUR")) return "NURSERY";
+    if (s.includes("JR") || s.includes("LKG")) return "JR. KG";
+    if (s.includes("SR") || s.includes("UKG")) return "SR. KG";
+    
+    // Clean up roman numerals / digits
+    return s.replace(/[^A-Z0-9]/g, "");
+}
+
+function getItemsForStandard(stdRaw) {
+    if (!stdRaw) return [];
+    
+    let stdKey = stdRaw.toUpperCase();
+    if (stdKey.includes("NUR")) stdKey = "NURSERY";
+    else if (stdKey.includes("JR") || stdKey.includes("LKG")) stdKey = "JR. KG";
+    else if (stdKey.includes("SR") || stdKey.includes("UKG")) stdKey = "SR. KG";
+
+    let availableItems = ["TOTAL AMOUNT", "TEXTBOOKS SET", "NOTEBOOK SET"];
+
+    // Append granular individual books for this standard from prices.js if available
+    if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[stdKey]) {
+        const granularBooks = Object.keys(BOOK_ITEMS_BREAKDOWN[stdKey]);
+        availableItems = availableItems.concat(granularBooks);
+    }
+
+    return availableItems;
 }
 
 function getBookUnitPrice(itemName) {
@@ -146,20 +151,19 @@ function getBookUnitPrice(itemName) {
     const stdRaw = standard.value.trim();
     if (!stdRaw) return 0;
 
-    // Normalize standard format to match price matrix keys
     let stdKey = stdRaw.toUpperCase();
     if (stdKey.includes("NUR")) stdKey = "NURSERY";
     else if (stdKey.includes("JR") || stdKey.includes("LKG")) stdKey = "JR. KG";
     else if (stdKey.includes("SR") || stdKey.includes("UKG")) stdKey = "SR. KG";
 
-    // 1. Check Standard Bundle Price Matrix first
+    // 1. Check Standard Bundle Price Matrix
     if (typeof BOOK_PRICE_MATRIX !== "undefined" && BOOK_PRICE_MATRIX[stdKey]) {
         if (BOOK_PRICE_MATRIX[stdKey][itemName] !== undefined) {
             return BOOK_PRICE_MATRIX[stdKey][itemName];
         }
     }
 
-    // 2. Check Granular Individual Breakdown Matrix next
+    // 2. Check Granular Individual Breakdown Matrix
     if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[stdKey]) {
         if (BOOK_ITEMS_BREAKDOWN[stdKey][itemName] !== undefined) {
             return BOOK_ITEMS_BREAKDOWN[stdKey][itemName];
@@ -176,12 +180,20 @@ function createBookItemRow() {
     const row = document.createElement("div");
     row.className = "item-row";
 
+    const std = standard.value.trim();
     const select = document.createElement("select");
     select.className = "item-name";
     select.required = true;
-    const items = getAvailableBookItems();
-    select.innerHTML = `<option value="">Select Book Item</option>` + 
-        items.map(i => `<option value="${i}">${i}</option>`).join("");
+
+    if (!std) {
+        select.innerHTML = `<option value="">Select Standard First</option>`;
+        select.disabled = true;
+    } else {
+        const items = getItemsForStandard(std);
+        select.innerHTML = `<option value="">Select Book Item</option>` + 
+            items.map(i => `<option value="${i}">${i}</option>`).join("");
+        select.disabled = false;
+    }
 
     const qty = document.createElement("select");
     qty.className = "item-qty";
@@ -208,8 +220,40 @@ function createBookItemRow() {
 }
 
 function addBookItemRow() {
+    if (!standard.value.trim()) {
+        alert("Please select a Standard first before adding items.");
+        return standard.focus();
+    }
     itemsContainer.appendChild(createBookItemRow());
     updateTotal();
+}
+
+function updateAllRowItemDropdowns() {
+    const std = standard.value.trim();
+    const rows = itemsContainer.querySelectorAll(".item-row");
+    const items = std ? getItemsForStandard(std) : [];
+
+    rows.forEach(row => {
+        const select = row.querySelector(".item-name");
+        const prevVal = select.value;
+
+        if (!std) {
+            select.innerHTML = `<option value="">Select Standard First</option>`;
+            select.disabled = true;
+            select.value = "";
+        } else {
+            select.disabled = false;
+            select.innerHTML = `<option value="">Select Book Item</option>` + 
+                items.map(i => `<option value="${i}">${i}</option>`).join("");
+            
+            if (items.includes(prevVal)) {
+                select.value = prevVal;
+            } else {
+                select.value = "";
+            }
+        }
+    });
+    syncAndRecalculateBooks();
 }
 
 function syncAndRecalculateBooks() {
@@ -237,6 +281,8 @@ function syncAndRecalculateBooks() {
         } else if (item) {
             amtInput.readOnly = false;
             amtInput.title = "Manual pricing";
+        } else {
+            amtInput.value = "";
         }
     });
     updateTotal();
@@ -301,6 +347,7 @@ function clearForm() {
     if (branch && savedBranch) branch.value = savedBranch;
     itemsContainer.innerHTML = "";
     addBookItemRow();
+    updateAllRowItemDropdowns();
     billTotal.textContent = "₹0.00";
     handlePaymentMode();
 }
@@ -383,7 +430,7 @@ branch?.addEventListener("change", () => {
     localStorage.setItem("selectedBranch", branch.value);
 });
 
-standard?.addEventListener("change", syncAndRecalculateBooks);
+standard?.addEventListener("change", updateAllRowItemDropdowns);
 paymentMode?.addEventListener("change", handlePaymentMode);
 addItemBtn?.addEventListener("click", addBookItemRow);
 clearBtn?.addEventListener("click", clearForm);
@@ -409,6 +456,11 @@ itemsContainer?.addEventListener("click", (e) => {
 
 bookBillForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    if (!standard.value.trim()) {
+        alert("Please select a standard.");
+        return standard.focus();
+    }
 
     const isOnline = paymentMode.value === "Online";
     if (isOnline && !transactionId.value.trim()) {
@@ -480,5 +532,6 @@ if (savedBranch && branch) branch.value = savedBranch;
 billDate.value = getTodayDate();
 itemsContainer.innerHTML = "";
 addBookItemRow();
+updateAllRowItemDropdowns();
 handlePaymentMode();
 setNextBillNumber();
