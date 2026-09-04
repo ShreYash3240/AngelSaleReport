@@ -344,10 +344,6 @@ function showDigitalReceiptSlip(bill) {
         const tr = document.createElement("tr");
         tr.style.height = "22px";
 
-            for (let i = 0; i < totalRows; i++) {
-        const tr = document.createElement("tr");
-        tr.style.height = "22px";
-
         if (i < items.length) {
             const item = items[i];
             const sizeStr = item.size ? ` (${item.size})` : "";
