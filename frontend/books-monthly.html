@@ -14,11 +14,9 @@
     
     <!-- SheetJS for Excel exports -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-        <!-- SheetJS for Excel exports -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <!-- Chart.js for Instant Client-Side Analytics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-
 </head>
 <body>
 <div class="container">
@@ -43,6 +41,8 @@
                     <a href="/books-monthly.html" class="dropdown-item active">Monthly Report</a>
                 </div>
             </div>
+
+            <a href="/scan-bill.html" class="nav-btn scanner-nav-btn" style="text-decoration: none; padding: 6px 14px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd;">📷 Scanner</a>
 
             <button id="authBtn" type="button" class="logout-btn">Logout</button>
         </nav>
@@ -94,7 +94,7 @@
             </div>
 
             <!-- Summary KPI Cards -->
-            <div class="monthly-summary">
+            <div class="monthly-summary" style="margin-top: 16px;">
                 <div class="summary-box">
                     <span>Total Sales</span>
                     <strong id="summaryTotal">₹0.00</strong>
@@ -114,8 +114,8 @@
             </div>
         </section>
 
-        <!-- Detailed Data Table Card -->
-        <section class="card">
+        <!-- Detailed Data Table Card with Fixed Height Internal Scroll -->
+        <section class="card" style="margin-top: 16px;">
             <div class="section-header">
                 <h2>Detailed Book Transactions</h2>
                 <div class="today-summary">
@@ -123,10 +123,10 @@
                 </div>
             </div>
 
-            <div class="table-container">
-                <table id="reportTable">
+            <div class="table-scroll-container" style="max-height: 520px; overflow-y: auto; overflow-x: auto; border: 1px solid #cbd5e1; border-radius: 12px; position: relative;">
+                <table id="reportTable" class="data-table" style="width: 100%; border-collapse: collapse;">
                     <thead>
-                        <tr>
+                        <tr style="position: sticky; top: 0; background: #f1f5f9; z-index: 2;">
                             <th>Bill Date</th>
                             <th>Branch</th>
                             <th>Bill No.</th>
@@ -141,11 +141,11 @@
                     </thead>
                     <tbody id="reportBody"></tbody>
                 </table>
-                <div id="reportEmptyMessage" class="empty-message" style="display: none;">No book bills found for selected filters.</div>
+                <div id="reportEmptyMessage" class="empty-message" style="display: none; padding: 24px; text-align: center; color: #64748b;">No book bills found for selected filters.</div>
             </div>
         </section>
 
-                <!-- Graphical Analytics Visualization Section -->
+        <!-- Graphical Analytics Visualization Section -->
         <section class="card" style="margin-top: 24px;">
             <div class="section-header">
                 <div>
@@ -161,16 +161,14 @@
                         <option value="paymentPie">🥧 Payment Mode Split (Pie)</option>
                         <option value="line">📈 Daily Trend (Line)</option>
                     </select>
-
                 </div>
             </div>
 
-            <!-- Canvas wrapper must have relative positioning & explicit height for Chart.js responsiveness -->
+            <!-- Canvas wrapper for Chart.js responsiveness -->
             <div style="position: relative; height: 360px; width: 100%; padding: 10px 0;">
                 <canvas id="salesChartCanvas"></canvas>
             </div>
         </section>
-
 
         <footer>
             <p>© 2026 School Sales Portal • Books Department Reporting</p>
