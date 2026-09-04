@@ -77,6 +77,47 @@ function getAuthHeaders() {
 }
 
 // ==================================================
+// DATA NORMALIZATION UTILITIES
+// ==================================================
+function toTitleCase(str) {
+    if (!str) return "";
+    return str
+        .toLowerCase()
+        .split(" ")
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+}
+
+function normalizeStandard(std) {
+    if (!std) return "";
+    let s = String(std).trim().toUpperCase();
+
+    if (s.includes("NUR")) return "Nursery";
+    if (s.includes("JR") || s.includes("LKG")) return "Jr. KG";
+    if (s.includes("SR") || s.includes("UKG")) return "Sr. KG";
+
+    // Prioritize 10 over 1-9 to avoid truncating "10th"
+    const digitMatch = s.match(/\b(10|[1-9])\b/) || s.match(/^(10|[1-9])/);
+    if (digitMatch) {
+        const num = digitMatch[1];
+        const suffixes = { "1": "1st", "2": "2nd", "3": "3rd" };
+        return suffixes[num] || `${num}th`;
+    }
+
+    const romanMap = {
+        "X": "10th", "IX": "9th", "VIII": "8th", "VII": "7th",
+        "VI": "6th", "V": "5th", "IV": "4th", "III": "3rd", "II": "2nd", "I": "1st"
+    };
+    for (const [roman, normalized] of Object.entries(romanMap)) {
+        const regex = new RegExp(`\\b${roman}\\b`, "i");
+        if (regex.test(s)) return normalized;
+    }
+
+    return toTitleCase(std);
+}
+
+// ==================================================
 // PRICING LOOKUP
 // ==================================================
 function getAvailableUniformItems() {
@@ -276,6 +317,77 @@ function clearForm() {
 }
 
 // ==================================================
+// DIGITAL BILL SLIP POPUP & PRINT ENGINE
+// ==================================================
+function showDigitalReceiptSlip(bill) {
+    const modal = document.getElementById("receiptSlipModal");
+    if (!modal) return;
+
+    const dateParts = (bill.billDate || "").split("-");
+    const formattedDate = dateParts.length === 3 
+        ? `${parseInt(dateParts[2], 10)}/${parseInt(dateParts[1], 10)}/${dateParts[0].slice(-2)}` 
+        : bill.billDate;
+
+    document.getElementById("slipDate").textContent = formattedDate;
+    document.getElementById("slipBillNo").textContent = bill.billNo || "";
+    document.getElementById("slipStudentName").textContent = bill.studentName || "";
+    document.getElementById("slipStd").textContent = bill.standard || "";
+
+    const tbody = document.getElementById("slipItemsBody");
+    tbody.innerHTML = "";
+
+    const items = bill.items || [];
+    const minRows = 4;
+    const totalRows = Math.max(items.length, minRows);
+
+    for (let i = 0; i < totalRows; i++) {
+        const tr = document.createElement("tr");
+        tr.style.height = "26px";
+
+        if (i < items.length) {
+            const item = items[i];
+            const sizeStr = item.size ? ` (${item.size})` : "";
+            tr.innerHTML = `
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.8rem;">${i + 1}</td>
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1; padding: 2px 6px; font-weight: 600;">${item.name}${sizeStr}</td>
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center;">${item.quantity || 1}</td>
+                <td style="border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700;">${Number(item.amount || 0)}</td>
+            `;
+        } else {
+            tr.innerHTML = `
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
+                <td style="border-bottom: 1px solid #cbd5e1;"></td>
+            `;
+        }
+        tbody.appendChild(tr);
+    }
+
+    if (bill.paymentMode === "Online") {
+        const trPay = document.createElement("tr");
+        trPay.innerHTML = `
+            <td style="border-right: 1.5px solid #000;"></td>
+            <td colspan="3" style="padding: 2px 6px; font-size: 0.75rem; color: #334155; font-weight: bold;">
+                Online : ${bill.transactionId || "Verified"}
+            </td>
+        `;
+        tbody.appendChild(trPay);
+    }
+
+    document.getElementById("slipTotalAmount").textContent = Number(bill.total || 0);
+    modal.style.display = "flex";
+}
+
+document.getElementById("printSlipBtn")?.addEventListener("click", () => window.print());
+document.getElementById("closeSlipBtn")?.addEventListener("click", () => {
+    document.getElementById("receiptSlipModal").style.display = "none";
+});
+document.getElementById("receiptSlipModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "receiptSlipModal") e.target.style.display = "none";
+});
+
+// ==================================================
 // EVENT LISTENERS
 // ==================================================
 branch?.addEventListener("change", () => {
@@ -376,8 +488,8 @@ billForm?.addEventListener("submit", async (e) => {
         branch: branch.value.trim(),
         billDate: billDate.value.trim(),
         billNo: billNo.value.trim(),
-        studentName: studentName.value.trim(),
-        standard: standard.value.trim(),
+        studentName: toTitleCase(studentName.value.trim()),
+        standard: normalizeStandard(standard.value.trim()),
         gender: gender.value.trim(),
         paymentMode: paymentMode.value.trim(),
         transactionId: isOnline ? transactionId.value.trim() : "",
@@ -394,9 +506,11 @@ billForm?.addEventListener("submit", async (e) => {
         const data = await res.json();
         if (!res.ok) return alert(data.message || "Failed to save bill.");
 
-        alert(`Uniform Bill #${payload.billNo} saved successfully!`);
         clearForm();
         setNextBillNumber();
+
+        // 🚀 Trigger exact replica printable digital slip modal popup
+        showDigitalReceiptSlip(payload);
     } catch {
         alert("Could not reach AWS backend.");
     }

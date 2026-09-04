@@ -1,5 +1,5 @@
 // ==================================================
-// BOOKS DEPARTMENT - BILL ENTRY (books-daily.js)
+// BOOKS DEPARTMENT - DAILY BILL ENTRY (books-daily.js)
 // ==================================================
 const API_BASE_URL = "https://myen97dfp7.execute-api.ap-south-1.amazonaws.com";
 
@@ -18,52 +18,51 @@ const addItemBtn = document.getElementById("addItemBtn");
 const billTotal = document.getElementById("billTotal");
 const clearBtn = document.getElementById("clearBtn");
 
-const BUNDLE_OPTIONS = [
-    { key: "TOTAL AMOUNT", label: "COMPLETE BOOK SET (Both Text & Notes)" },
-    { key: "TEXTBOOKS SET", label: "TEXTBOOKS SET ONLY" },
-    { key: "NOTEBOOK SET", label: "NOTEBOOK SET ONLY" }
-];
-
 // ==================================================
 // AUTHENTICATION & HEADERS
 // ==================================================
+function parseJwt(token) {
+    try {
+        const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const json = decodeURIComponent(atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
+        return JSON.parse(json);
+    } catch { return null; }
+}
+
 function handleLogout() {
     sessionStorage.clear();
     localStorage.removeItem("cognito_id_token");
     localStorage.removeItem("selectedBranch");
-    window.location.replace("login.html");
+    window.location.replace("/login.html");
 }
 
-(function enforceAuth() {
-    const token = sessionStorage.getItem("cognito_id_token");
-    if (!token) return window.location.replace("login.html");
-
-    try {
-        const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-        const json = decodeURIComponent(atob(base64).split("").map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join(""));
-        const payload = JSON.parse(json);
-
-        if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
-            sessionStorage.removeItem("cognito_id_token");
-            return window.location.replace("login.html");
+(function enforceAuthentication() {
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+        const token = new URLSearchParams(hash).get("id_token");
+        if (token) {
+            sessionStorage.setItem("cognito_id_token", token);
+            window.history.replaceState(null, "", window.location.pathname);
         }
-
-        const emailDisplay = document.getElementById("userEmailDisplay");
-        if (emailDisplay) emailDisplay.textContent = payload.name || payload.email || "Accountant";
-
-        const appContainer = document.getElementById("appContainer");
-        if (appContainer) appContainer.style.display = "block";
-
-        const authBtn = document.getElementById("authBtn");
-        if (authBtn) {
-            authBtn.onclick = (e) => {
-                e.preventDefault();
-                handleLogout();
-            };
-        }
-    } catch {
-        window.location.replace("login.html");
     }
+
+    const token = sessionStorage.getItem("cognito_id_token");
+    if (!token) return window.location.replace("/login.html");
+
+    const payload = parseJwt(token);
+    if (!payload || !payload.exp || payload.exp * 1000 <= Date.now()) {
+        sessionStorage.removeItem("cognito_id_token");
+        return window.location.replace("/login.html");
+    }
+
+    const emailDisplay = document.getElementById("userEmailDisplay");
+    if (emailDisplay) emailDisplay.textContent = payload.name || payload.email || "Accountant";
+
+    const appContainer = document.getElementById("appContainer");
+    if (appContainer) appContainer.style.display = "block";
+
+    const authBtn = document.getElementById("authBtn");
+    if (authBtn) authBtn.onclick = (e) => { e.preventDefault(); handleLogout(); };
 })();
 
 function getAuthHeaders() {
@@ -75,124 +74,118 @@ function getAuthHeaders() {
 }
 
 // ==================================================
-// PRICING LOOKUP
+// DATA NORMALIZATION UTILITIES
 // ==================================================
-function getAvailableBookItems(std) {
-    if (!std) return [];
-    const items = [];
+function toTitleCase(str) {
+    if (!str) return "";
+    return str
+        .toLowerCase()
+        .split(" ")
+        .filter(Boolean)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+}
 
-    BUNDLE_OPTIONS.forEach(b => {
-        if (typeof BOOKS_PRICE_MATRIX !== "undefined" && BOOKS_PRICE_MATRIX[std]?.[b.key]) {
-            items.push({ value: b.key, label: b.label, isBundle: true });
-        }
-    });
+function normalizeStandard(std) {
+    if (!std) return "";
+    let s = String(std).trim().toUpperCase();
 
-    if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[std]) {
-        Object.keys(BOOK_ITEMS_BREAKDOWN[std]).forEach(singleBook => {
-            items.push({ value: singleBook, label: singleBook, isBundle: false });
-        });
+    if (s.includes("NUR")) return "Nursery";
+    if (s.includes("JR") || s.includes("LKG")) return "Jr. KG";
+    if (s.includes("SR") || s.includes("UKG")) return "Sr. KG";
+
+    const digitMatch = s.match(/\b(10|[1-9])\b/) || s.match(/^(10|[1-9])/);
+    if (digitMatch) {
+        const num = digitMatch[1];
+        const suffixes = { "1": "1st", "2": "2nd", "3": "3rd" };
+        return suffixes[num] || `${num}th`;
     }
 
-    return items;
+    const romanMap = {
+        "X": "10th", "IX": "9th", "VIII": "8th", "VII": "7th",
+        "VI": "6th", "V": "5th", "IV": "4th", "III": "3rd", "II": "2nd", "I": "1st"
+    };
+    for (const [roman, normalized] of Object.entries(romanMap)) {
+        const regex = new RegExp(`\\b${roman}\\b`, "i");
+        if (regex.test(s)) return normalized;
+    }
+
+    return toTitleCase(std);
+}
+
+// ==================================================
+// PRICING LOOKUP (BOOKS)
+// ==================================================
+function getAvailableBookItems() {
+    return [
+        "TOTAL AMOUNT",
+        "TEXTBOOKS SET",
+        "NOTEBOOK SET",
+        "ENGLISH TEXTBOOK",
+        "MATHS TEXTBOOK",
+        "SCIENCE TEXTBOOK",
+        "MARATHI TEXTBOOK",
+        "HINDI TEXTBOOK",
+        "SOCIAL SCIENCE TEXTBOOK",
+        "DRAWING BOOK",
+        "SINGLE LINE NOTEBOOK",
+        "FOUR LINE NOTEBOOK",
+        "SQUARE NOTEBOOK"
+    ];
 }
 
 function getBookUnitPrice(itemName) {
+    if (!itemName) return 0;
     const std = standard.value.trim();
-    if (!std || !itemName) return 0;
+    if (!std) return 0;
 
-    if (typeof BOOKS_PRICE_MATRIX !== "undefined" && BOOKS_PRICE_MATRIX[std]?.[itemName] !== undefined) {
-        return BOOKS_PRICE_MATRIX[std][itemName];
-    }
-    if (typeof BOOK_ITEMS_BREAKDOWN !== "undefined" && BOOK_ITEMS_BREAKDOWN[std]?.[itemName] !== undefined) {
-        return BOOK_ITEMS_BREAKDOWN[std][itemName];
-    }
-    return 0;
+    return typeof BOOK_PRICE_MATRIX !== "undefined" ? (BOOK_PRICE_MATRIX[std]?.[itemName] ?? 0) : 0;
 }
 
 // ==================================================
 // DYNAMIC ITEM ROWS
 // ==================================================
-function populateItemSelectOptions(selectElement, selectedValue = "") {
-    const std = standard.value.trim();
-    const availableItems = getAvailableBookItems(std);
-
-    if (availableItems.length === 0) {
-        selectElement.innerHTML = `<option value="">Select Standard first</option>`;
-        return;
-    }
-
-    let html = `<option value="">Select Book / Set</option>`;
-    const bundles = availableItems.filter(i => i.isBundle);
-    if (bundles.length > 0) {
-        html += `<optgroup label="── Full Sets / Bundles ──">`;
-        bundles.forEach(b => {
-            html += `<option value="${b.value}">${b.label}</option>`;
-        });
-        html += `</optgroup>`;
-    }
-
-    const singles = availableItems.filter(i => !i.isBundle);
-    if (singles.length > 0) {
-        html += `<optgroup label="── Individual Textbooks & Notebooks ──">`;
-        singles.forEach(s => {
-            html += `<option value="${s.value}">${s.label}</option>`;
-        });
-        html += `</optgroup>`;
-    }
-
-    selectElement.innerHTML = html;
-    if (selectedValue) selectElement.value = selectedValue;
-}
-
 function createBookItemRow() {
     const row = document.createElement("div");
     row.className = "item-row";
-    row.style.gridTemplateColumns = "minmax(260px, 2fr) 90px 130px 36px";
 
     const select = document.createElement("select");
     select.className = "item-name";
     select.required = true;
-    populateItemSelectOptions(select);
+    const items = getAvailableBookItems();
+    select.innerHTML = `<option value="">Select Book Item</option>` + 
+        items.map(i => `<option value="${i}">${i}</option>`).join("");
 
     const qty = document.createElement("select");
     qty.className = "item-qty";
     qty.required = true;
     qty.innerHTML = `<option value="">Qty.</option>` + 
-        Array.from({ length: 30 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
+        Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join("");
 
     const amt = document.createElement("input");
     amt.type = "number";
     amt.className = "item-amount";
     amt.min = "0";
     amt.step = "0.01";
-    amt.placeholder = "Amount";
+    amt.placeholder = "0.00";
     amt.required = true;
 
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "remove-item-btn";
+    removeBtn.title = "Remove item";
     removeBtn.textContent = "×";
 
     row.append(select, qty, amt, removeBtn);
     return row;
 }
 
-function addBookRow() {
+function addBookItemRow() {
     itemsContainer.appendChild(createBookItemRow());
     updateTotal();
 }
 
-function refreshAllDropdownsForStandard() {
-    const rows = itemsContainer.querySelectorAll(".item-row");
-    rows.forEach(row => {
-        const select = row.querySelector(".item-name");
-        const prevVal = select.value;
-        populateItemSelectOptions(select, prevVal);
-    });
-    syncAndRecalculate();
-}
-
-function syncAndRecalculate() {
+function syncAndRecalculateBooks() {
     const rows = itemsContainer.querySelectorAll(".item-row");
     rows.forEach(row => {
         const itemSelect = row.querySelector(".item-name");
@@ -209,12 +202,14 @@ function syncAndRecalculate() {
         }
 
         const quantity = Number(qtySelect.value) || 0;
+
         if (item && unitPrice > 0) {
             amtInput.value = (unitPrice * quantity).toFixed(2);
             amtInput.readOnly = true;
             amtInput.title = `Unit Price: ₹${unitPrice}`;
-        } else {
+        } else if (item) {
             amtInput.readOnly = false;
+            amtInput.title = "Manual pricing";
         }
     });
     updateTotal();
@@ -227,7 +222,7 @@ function updateTotal() {
 }
 
 // ==================================================
-// UTILITIES & AUTO-FILL HELPERS
+// UTILITIES & SEQUENCE
 // ==================================================
 function getTodayDate() {
     const d = new Date();
@@ -241,10 +236,10 @@ function handlePaymentMode() {
     if (!isOnline) transactionId.value = "";
 }
 
-const BOOK_BILL_PREFIX = "B";
+const BOOKS_BILL_PREFIX = "B";
 
-function formatBookBillNo(num) {
-    return `${BOOK_BILL_PREFIX}${String(num).padStart(4, "0")}`;
+function formatBooksBillNo(num) {
+    return `${BOOKS_BILL_PREFIX}${String(num).padStart(4, "0")}`;
 }
 
 async function setNextBillNumber() {
@@ -265,9 +260,9 @@ async function setNextBillNumber() {
             }
         });
 
-        billNo.value = formatBookBillNo(maxNum + 1);
+        billNo.value = formatBooksBillNo(maxNum + 1);
     } catch {
-        billNo.value = formatBookBillNo(1);
+        billNo.value = formatBooksBillNo(1);
     }
 }
 
@@ -278,10 +273,81 @@ function clearForm() {
     setNextBillNumber();
     if (branch && savedBranch) branch.value = savedBranch;
     itemsContainer.innerHTML = "";
-    addBookRow();
+    addBookItemRow();
     billTotal.textContent = "₹0.00";
     handlePaymentMode();
 }
+
+// ==================================================
+// DIGITAL BILL SLIP POPUP & PRINT ENGINE
+// ==================================================
+function showDigitalReceiptSlip(bill) {
+    const modal = document.getElementById("receiptSlipModal");
+    if (!modal) return;
+
+    const dateParts = (bill.billDate || "").split("-");
+    const formattedDate = dateParts.length === 3 
+        ? `${parseInt(dateParts[2], 10)}/${parseInt(dateParts[1], 10)}/${dateParts[0].slice(-2)}` 
+        : bill.billDate;
+
+    document.getElementById("slipDate").textContent = formattedDate;
+    document.getElementById("slipBillNo").textContent = bill.billNo || "";
+    document.getElementById("slipStudentName").textContent = bill.studentName || "";
+    document.getElementById("slipStd").textContent = bill.standard || "";
+
+    const tbody = document.getElementById("slipItemsBody");
+    tbody.innerHTML = "";
+
+    const items = bill.items || [];
+    const minRows = 4;
+    const totalRows = Math.max(items.length, minRows);
+
+    for (let i = 0; i < totalRows; i++) {
+        const tr = document.createElement("tr");
+        tr.style.height = "26px";
+
+        if (i < items.length) {
+            const item = items[i];
+            const sizeStr = item.size ? ` (${item.size})` : "";
+            tr.innerHTML = `
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center; font-size: 0.8rem;">${i + 1}</td>
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1; padding: 2px 6px; font-weight: 600;">${item.name}${sizeStr}</td>
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1; text-align: center;">${item.quantity || 1}</td>
+                <td style="border-bottom: 1px solid #cbd5e1; text-align: center; font-weight: 700;">${Number(item.amount || 0)}</td>
+            `;
+        } else {
+            tr.innerHTML = `
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
+                <td style="border-right: 1.5px solid #000; border-bottom: 1px solid #cbd5e1;"></td>
+                <td style="border-bottom: 1px solid #cbd5e1;"></td>
+            `;
+        }
+        tbody.appendChild(tr);
+    }
+
+    if (bill.paymentMode === "Online") {
+        const trPay = document.createElement("tr");
+        trPay.innerHTML = `
+            <td style="border-right: 1.5px solid #000;"></td>
+            <td colspan="3" style="padding: 2px 6px; font-size: 0.75rem; color: #334155; font-weight: bold;">
+                Online : ${bill.transactionId || "Verified"}
+            </td>
+        `;
+        tbody.appendChild(trPay);
+    }
+
+    document.getElementById("slipTotalAmount").textContent = Number(bill.total || 0);
+    modal.style.display = "flex";
+}
+
+document.getElementById("printSlipBtn")?.addEventListener("click", () => window.print());
+document.getElementById("closeSlipBtn")?.addEventListener("click", () => {
+    document.getElementById("receiptSlipModal").style.display = "none";
+});
+document.getElementById("receiptSlipModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "receiptSlipModal") e.target.style.display = "none";
+});
 
 // ==================================================
 // EVENT LISTENERS
@@ -290,14 +356,14 @@ branch?.addEventListener("change", () => {
     localStorage.setItem("selectedBranch", branch.value);
 });
 
-standard?.addEventListener("change", refreshAllDropdownsForStandard);
+standard?.addEventListener("change", syncAndRecalculateBooks);
 paymentMode?.addEventListener("change", handlePaymentMode);
-addItemBtn?.addEventListener("click", addBookRow);
+addItemBtn?.addEventListener("click", addBookItemRow);
 clearBtn?.addEventListener("click", clearForm);
 
 itemsContainer?.addEventListener("change", (e) => {
     if (e.target.classList.contains("item-name") || e.target.classList.contains("item-qty")) {
-        syncAndRecalculate();
+        syncAndRecalculateBooks();
     }
 });
 
@@ -307,7 +373,9 @@ itemsContainer?.addEventListener("input", (e) => {
 
 itemsContainer?.addEventListener("click", (e) => {
     if (!e.target.classList.contains("remove-item-btn")) return;
-    if (itemsContainer.querySelectorAll(".item-row").length === 1) return alert("At least one item required.");
+    if (itemsContainer.querySelectorAll(".item-row").length === 1) {
+        return alert("At least one book item is required.");
+    }
     e.target.closest(".item-row").remove();
     updateTotal();
 });
@@ -317,7 +385,7 @@ bookBillForm?.addEventListener("submit", async (e) => {
 
     const isOnline = paymentMode.value === "Online";
     if (isOnline && !transactionId.value.trim()) {
-        alert("Transaction ID required for Online payments.");
+        alert("Transaction ID is required for Online payments.");
         return transactionId.focus();
     }
 
@@ -331,9 +399,15 @@ bookBillForm?.addEventListener("submit", async (e) => {
         const amt = parseFloat(row.querySelector(".item-amount").value);
 
         if (!name || isNaN(qty) || isNaN(amt)) {
-            return alert(`Row ${i + 1}: Please complete all fields.`);
+            return alert(`Row ${i + 1}: Please complete all item fields.`);
         }
-        items.push({ name, quantity: qty, unitPrice: getBookUnitPrice(name), amount: amt });
+
+        items.push({
+            name,
+            quantity: qty,
+            unitPrice: getBookUnitPrice(name),
+            amount: amt
+        });
     }
 
     const total = items.reduce((sum, item) => sum + item.amount, 0);
@@ -343,8 +417,8 @@ bookBillForm?.addEventListener("submit", async (e) => {
         branch: branch.value.trim(),
         billDate: billDate.value.trim(),
         billNo: billNo.value.trim(),
-        studentName: studentName.value.trim(),
-        standard: standard.value.trim(),
+        studentName: toTitleCase(studentName.value.trim()),
+        standard: normalizeStandard(standard.value.trim()),
         paymentMode: paymentMode.value.trim(),
         transactionId: isOnline ? transactionId.value.trim() : "",
         items,
@@ -360,9 +434,11 @@ bookBillForm?.addEventListener("submit", async (e) => {
         const data = await res.json();
         if (!res.ok) return alert(data.message || "Failed to save bill.");
 
-        alert(`Book Bill #${payload.billNo} saved successfully!`);
         clearForm();
         setNextBillNumber();
+
+        // 🚀 Trigger printable digital receipt slip modal popup
+        showDigitalReceiptSlip(payload);
     } catch {
         alert("Could not reach AWS backend.");
     }
@@ -376,6 +452,6 @@ if (savedBranch && branch) branch.value = savedBranch;
 
 billDate.value = getTodayDate();
 itemsContainer.innerHTML = "";
-addBookRow();
+addBookItemRow();
 handlePaymentMode();
 setNextBillNumber();
