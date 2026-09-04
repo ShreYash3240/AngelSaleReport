@@ -89,61 +89,344 @@ receiptImageInput?.addEventListener("change", async (e) => {
     reader.readAsDataURL(file);
 });
 
-async function analyzeBillWithGemini(base64Data, mimeType) {
-    loadingStatus.style.display = "block";
-    reviewCard.style.display = "none";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { 
+  DynamoDBDocumentClient, 
+  PutCommand, 
+  QueryCommand, 
+  ScanCommand,
+  DeleteCommand
+} from "@aws-sdk/lib-dynamodb";
 
-    const systemPrompt = `You are a school billing receipt data extractor.
-Analyze this paper receipt carefully. It can be printed or handwritten.
-Extract the data and return ONLY a single valid JSON object (no markdown, no backticks, no words) with this structure:
-{
-  "department": "Uniform" or "Books",
-  "billNo": "exact receipt or bill number found",
-  "billDate": "YYYY-MM-DD format (infer year 2026 if not specified)",
-  "branch": "Hadapsar or Loni or Fursungi or Urli or empty",
-  "studentName": "student name or empty",
-  "standard": "class/std, e.g. Nursery, I, II, 5th, etc.",
-  "gender": "BOYS or GIRLS or empty",
-  "paymentMode": "Cash or Online",
-  "items": [
-    { "name": "Item Name", "size": "size or empty", "quantity": 1, "amount": 0.00 }
-  ],
-  "total": 0.00
-}`;
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
 
-    try {
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-        const response = await fetch(endpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [
-                        { text: systemPrompt },
-                        { inline_data: { mime_type: mimeType, data: base64Data } }
-                    ]
-                }]
-            })
-        });
+// Supports either a single unified table or a dedicated books table via env vars
+const DEFAULT_TABLE_NAME = process.env.TABLE_NAME || "SchoolSales";
+const BOOKS_TABLE_NAME = process.env.BOOKS_TABLE_NAME || DEFAULT_TABLE_NAME;
 
-        if (!response.ok) {
-            const errData = await response.json();
-            throw new Error(errData.error?.message || "Gemini API error");
-        }
-
-        const data = await response.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        const cleanJson = rawText.replace(/```json|```/gi, "").trim();
-        const parsed = JSON.parse(cleanJson);
-
-        populateReviewForm(parsed);
-    } catch (err) {
-        console.error("Gemini Extraction Error:", err);
-        alert("Failed to extract data: " + err.message + "\nPlease try another photo or enter manually.");
-    } finally {
-        loadingStatus.style.display = "none";
-    }
+function getTableNameForDept(dept) {
+  return dept === "Books" ? BOOKS_TABLE_NAME : DEFAULT_TABLE_NAME;
 }
+
+const corsHeaders = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type,Authorization",
+  "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS"
+};
+
+// 1. Helper to extract user email from authorizer claims or Bearer token
+function getActorEmail(event) {
+  const authorizerClaims = event.requestContext?.authorizer?.jwt?.claims 
+                        || event.requestContext?.authorizer?.claims;
+  
+  if (authorizerClaims) {
+    if (authorizerClaims.email) return authorizerClaims.email;
+    if (authorizerClaims["cognito:username"]) return authorizerClaims["cognito:username"];
+    if (authorizerClaims.username) return authorizerClaims.username;
+  }
+
+  const headers = event.headers || {};
+  const authHeader = headers.authorization || headers.Authorization || headers.AUTHORIZATION;
+
+  if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+    try {
+      const token = authHeader.split(" ")[1];
+      const payloadBase64 = token.split(".")[1];
+      const normalizedBase64 = payloadBase64.replace(/-/g, "+").replace(/_/g, "/");
+      const decodedJson = Buffer.from(normalizedBase64, "base64").toString("utf-8");
+      const parsed = JSON.parse(decodedJson);
+
+      return parsed.email || parsed["cognito:username"] || parsed.name || parsed.sub || "Token Found (No Email)";
+    } catch (e) {
+      console.error("JWT Decode Error in Lambda:", e.message);
+    }
+  }
+
+  return "Unknown / Unauthenticated User";
+}
+
+// 2. Helper to log structured JSON audit streams for CloudWatch Logs Insights
+function auditLog(action, details, actor) {
+  const logEntry = {
+    eventType: "AUDIT_EVENT",
+    action,
+    actor,
+    timestamp: new Date().toISOString(),
+    details
+  };
+  console.log(`[AUDIT] ${JSON.stringify(logEntry)}`);
+}
+
+export const handler = async (event) => {
+  const httpMethod = event.requestContext?.http?.method || event.httpMethod;
+  const rawPath = event.rawPath || event.path || "";
+
+  // Handle CORS Preflight
+  if (httpMethod === "OPTIONS") {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ""
+    };
+  }
+
+  try {
+    const queryParams = event.queryStringParameters || {};
+    const actor = getActorEmail(event);
+
+    // ----------------------------------------------------
+    // 1. GET /bills -> Fetch bills by department, date, month, or branch
+    // ----------------------------------------------------
+    if (httpMethod === "GET") {
+      const { branch, date, month, department } = queryParams;
+      const dept = department || "Uniform";
+      const targetTable = getTableNameForDept(dept);
+
+      let items = [];
+
+      if (branch && branch !== "All") {
+        const queryRes = await docClient.send(new QueryCommand({
+          TableName: targetTable,
+          KeyConditionExpression: "PK = :pk",
+          ExpressionAttributeValues: {
+            ":pk": `BRANCH#${branch}#DEPT#${dept}`
+          }
+        }));
+        items = queryRes.Items || [];
+
+        // Backward compatibility for Uniform if using legacy partition key format
+        if (dept === "Uniform" && items.length === 0) {
+          const legacyQuery = await docClient.send(new QueryCommand({
+            TableName: targetTable,
+            KeyConditionExpression: "PK = :pk",
+            ExpressionAttributeValues: {
+              ":pk": `BRANCH#${branch}`
+            }
+          }));
+          items = (legacyQuery.Items || []).filter(b => !b.department || b.department === "Uniform");
+        }
+      } else {
+        const scanRes = await docClient.send(new ScanCommand({
+          TableName: targetTable
+        }));
+        items = (scanRes.Items || []).filter(b => {
+          if (dept === "Books") return b.department === "Books";
+          return !b.department || b.department === "Uniform";
+        });
+      }
+
+      if (date) {
+        items = items.filter(b => b.billDate === date);
+      } else if (month) {
+        items = items.filter(b => b.billDate && b.billDate.startsWith(month));
+      }
+
+      items.sort((a, b) => (b.billDate || "").localeCompare(a.billDate || ""));
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(items)
+      };
+    }
+
+    // ----------------------------------------------------
+    // 2. POST /bills -> Validate Uniqueness & Save Bill
+    // ----------------------------------------------------
+    if (httpMethod === "POST") {
+      const body = typeof event.body === "string" ? JSON.parse(event.body) : event.body;
+
+      const {
+        department,
+        branch,
+        billDate,
+        billNo,
+        studentName,
+        standard,
+        gender,
+        paymentMode,
+        transactionId,
+        items,
+        total
+      } = body;
+
+      const dept = department || "Uniform";
+      const targetTable = getTableNameForDept(dept);
+
+      if (!branch || !billDate || !billNo || !standard || !paymentMode) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: "All required fields must be filled." })
+        };
+      }
+
+      if (dept === "Uniform" && !gender) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: "Gender is required for Uniform billing." })
+        };
+      }
+
+      const trimmedTxnId = transactionId ? String(transactionId).trim() : "";
+
+      if (paymentMode === "Online" && !trimmedTxnId) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: "Transaction ID is required for Online payments." })
+        };
+      }
+
+      const cleanBillNo = String(billNo).trim().toUpperCase();
+
+      // Check Bill No uniqueness using GSI scoped to department
+      try {
+        const billCheck = await docClient.send(new QueryCommand({
+          TableName: targetTable,
+          IndexName: "BillNoIndex",
+          KeyConditionExpression: "billNo = :bno",
+          ExpressionAttributeValues: {
+            ":bno": cleanBillNo
+          }
+        }));
+
+        const existingBill = (billCheck.Items || []).find(b => (b.department || "Uniform") === dept);
+        if (existingBill) {
+          return {
+            statusCode: 409,
+            headers: corsHeaders,
+            body: JSON.stringify({ message: `Bill No. "${cleanBillNo}" already exists in ${dept} department!` })
+          };
+        }
+      } catch (gsiErr) {
+        console.warn("BillNoIndex check warning:", gsiErr.message);
+      }
+
+      // Normalize item entries BEFORE assigning to newBill
+      const cleanItems = (items || []).map(i => {
+        const cleaned = {
+          name: String(i.name || "").trim(),
+          quantity: Number(i.quantity) || 1,
+          unitPrice: Number(i.unitPrice) || 0,
+          amount: Number(i.amount) || 0
+        };
+        if (i.size) cleaned.size = String(i.size).trim();
+        return cleaned;
+      });
+
+      // Construct the item with cleanItems defined
+      const newBill = {
+        PK: `BRANCH#${branch}#DEPT#${dept}`,
+        SK: `BILL#${billDate}#${cleanBillNo}`,
+        id: Date.now(),
+        department: dept,
+        branch,
+        billDate,
+        billNo: cleanBillNo,
+        studentName: studentName ? String(studentName).trim() : "",
+        standard,
+        paymentMode,
+        items: cleanItems,
+        total: Number(total) || 0,
+        createdAt: new Date().toISOString()
+      };
+
+      if (gender) newBill.gender = gender;
+      if (paymentMode === "Online" && trimmedTxnId) newBill.transactionId = trimmedTxnId;
+
+      await docClient.send(new PutCommand({
+        TableName: targetTable,
+        Item: newBill
+      }));
+
+      // Stream structured developer audit event to CloudWatch
+      auditLog("CREATE_BILL", {
+        department: dept,
+        branch,
+        billNo: newBill.billNo,
+        billDate,
+        standard,
+        total: newBill.total,
+        itemCount: cleanItems.length,
+        paymentMode
+      }, actor);
+
+      return {
+        statusCode: 201,
+        headers: corsHeaders,
+        body: JSON.stringify({ success: true, bill: newBill })
+      };
+    }
+
+    // ----------------------------------------------------
+    // 3. DELETE /bills -> Delete by branch, SK, and department
+    // ----------------------------------------------------
+    if (httpMethod === "DELETE") {
+      const { branch, billDate, billNo, department } = queryParams;
+      const dept = department || "Uniform";
+      const targetTable = getTableNameForDept(dept);
+
+      if (!branch || !billDate || !billNo) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ message: "branch, billDate, and billNo parameters are required." })
+        };
+      }
+
+      await docClient.send(new DeleteCommand({
+        TableName: targetTable,
+        Key: {
+          PK: `BRANCH#${branch}#DEPT#${dept}`,
+          SK: `BILL#${billDate}#${billNo}`
+        }
+      }));
+
+      // Backward compatibility cleanup for legacy uniform keys
+      if (dept === "Uniform") {
+        await docClient.send(new DeleteCommand({
+          TableName: targetTable,
+          Key: {
+            PK: `BRANCH#${branch}`,
+            SK: `BILL#${billDate}#${billNo}`
+          }
+        })).catch(() => {});
+      }
+
+      // Stream structured developer audit event to CloudWatch
+      auditLog("DELETE_BILL", {
+        department: dept,
+        branch,
+        billNo,
+        billDate
+      }, actor);
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ success: true, message: "Bill deleted successfully." })
+      };
+    }
+
+    return {
+      statusCode: 404,
+      headers: corsHeaders,
+      body: JSON.stringify({ message: `Route ${httpMethod} ${rawPath} not supported.` })
+    };
+
+  } catch (error) {
+    console.error("Handler Error:", error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: error.message || "Internal Server Error" })
+    };
+  }
+};
 
 // ==================================================
 // REVIEW & FORM AUTO-FILL
