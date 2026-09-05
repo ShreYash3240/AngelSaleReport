@@ -582,6 +582,42 @@ bookBillForm?.addEventListener("submit", async (e) => {
 });
 
 // ==================================================
+// DIRECT S3 VAULT UPLOAD FOR GENERATED RECEIPTS
+// ==================================================
+async function uploadToS3Vault(dataUrl, mimeType) {
+    const byteString = atob(dataUrl.split(",")[1]);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeType });
+
+    const res = await fetch(`${API_BASE_URL}/receipt-url?action=upload&mimeType=${encodeURIComponent(mimeType)}`, {
+        headers: getAuthHeaders()
+    });
+
+    if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || "Failed to obtain S3 upload credentials");
+    }
+
+    const { uploadUrl, s3Key } = await res.json();
+
+    const s3Res = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": mimeType },
+        body: blob
+    });
+
+    if (!s3Res.ok) {
+        throw new Error(`Direct S3 upload failed with status ${s3Res.status}`);
+    }
+
+    return s3Key;
+}
+
+// ==================================================
 // INITIALIZATION
 // ==================================================
 const savedBranch = localStorage.getItem("selectedBranch");
