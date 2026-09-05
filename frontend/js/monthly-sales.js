@@ -420,9 +420,9 @@ function renderReportTable(bills) {
             return `<div>${escapeHTML(i.name)}${i.size ? ` (${escapeHTML(i.size)})` : ""} × ${q} (₹${(Number(i.amount) || 0).toFixed(2)})</div>`;
         }).join("");
 
-        // S3 Receipt Vault view action (handles both scanned and typed snapshot receipts)
+        // S3 Receipt Vault view action (using action=view)
         const receiptAction = bill.receiptS3Key 
-            ? `<a href="${API_BASE_URL}/receipt-url?action=get&s3Key=${encodeURIComponent(bill.receiptS3Key)}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #e0f2fe; color: #0284c7; border-radius: 6px; font-weight: 600; font-size: 0.75rem; text-decoration: none;" title="View Digital Receipt Slip">📷 View</a>` 
+            ? `<a href="${API_BASE_URL}/receipt-url?action=view&s3Key=${encodeURIComponent(bill.receiptS3Key)}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #e0f2fe; color: #0284c7; border-radius: 6px; font-weight: 600; font-size: 0.75rem; text-decoration: none;" title="View Digital Receipt Slip">📷 View</a>` 
             : `<span style="color: #94a3b8; font-size: 0.75rem;">-</span>`;
 
         const tr = document.createElement("tr");
