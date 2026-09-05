@@ -295,10 +295,10 @@ function expandBillItems(bill) {
 // S3 VAULT PRE-SIGNED URL VIEWER (IN-PAGE MODAL)
 // ==================================================
 async function viewReceiptImage(s3Key) {
-    if (!s3Key) return alert("No original receipt image on file for this bill.");
-
-    const modal = document.getElementById("receiptModal");
-    const modalImg = document.getElementById("modalReceiptImg");
+    if (!s3Key) {
+        showPopup("No original receipt image on file for this bill.", "error");
+        return;
+    }
 
     try {
         const res = await fetch(`${API_BASE_URL}/receipt-url?action=view&s3Key=${encodeURIComponent(s3Key)}`, {
@@ -307,16 +307,10 @@ async function viewReceiptImage(s3Key) {
         const data = await res.json();
         if (!res.ok || !data.viewUrl) throw new Error(data.message || "Could not retrieve image");
 
-        // Display directly in on-screen popup modal
-        if (modal && modalImg) {
-            modalImg.src = data.viewUrl;
-            modal.style.display = "flex";
-        } else {
-            // Fallback
-            window.open(data.viewUrl, "_blank");
-        }
+        // Open the secure S3 pre-signed image URL directly in a clean new tab
+        window.open(data.viewUrl, "_blank");
     } catch (err) {
-        alert("Failed to load receipt: " + err.message);
+        showPopup("Failed to load receipt: " + err.message, "error");
     }
 }
 window.viewReceiptImage = viewReceiptImage;
