@@ -30,6 +30,45 @@ const discardBtn = document.getElementById("discardBtn");
 // Track the uploaded receipt image key in S3
 let currentReceiptS3Key = "";
 
+// Friendly Custom Popup Function
+function showPopup(message, type = "info") {
+    const modal = document.getElementById("customAlertModal");
+    const msgEl = document.getElementById("customAlertMessage");
+    const titleEl = document.getElementById("customAlertTitle");
+    const iconEl = document.getElementById("customAlertIcon");
+    const okBtn = document.getElementById("customAlertOkBtn");
+
+    if (!modal) {
+        // Fallback if modal isn't present on page yet
+        alert(message);
+        return;
+    }
+
+    msgEl.textContent = message;
+
+    // Customize styling based on message type
+    if (type === "success") {
+        titleEl.textContent = "Success!";
+        iconEl.textContent = "✅";
+        okBtn.style.background = "#16a34a"; // Friendly Green
+    } else if (type === "error") {
+        titleEl.textContent = "Action Needed";
+        iconEl.textContent = "⚠️";
+        okBtn.style.background = "#dc2626"; // Clear Red
+    } else {
+        titleEl.textContent = "Information";
+        iconEl.textContent = "ℹ️";
+        okBtn.style.background = "#0284c7"; // Friendly Blue
+    }
+
+    modal.style.display = "flex";
+
+    // Close action
+    okBtn.onclick = () => {
+        modal.style.display = "none";
+    };
+}
+
 // ==================================================
 // AUTHENTICATION GUARD
 // ==================================================

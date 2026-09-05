@@ -219,6 +219,18 @@
     </div>
 </div>
 
+<!-- Custom User-Friendly Popup Modal -->
+<div id="customAlertModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 999999; backdrop-filter: blur(3px); align-items: center; justify-content: center; padding: 15px;">
+    <div style="background: #ffffff; border-radius: 12px; max-width: 400px; width: 100%; padding: 20px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); text-align: center; font-family: 'Arial', sans-serif;">
+        <div id="customAlertIcon" style="font-size: 2rem; margin-bottom: 10px;">⚠️</div>
+        <h3 id="customAlertTitle" style="margin: 0 0 8px 0; font-size: 1.1rem; color: #1e293b; font-weight: 700;">Notice</h3>
+        <p id="customAlertMessage" style="margin: 0 0 20px 0; font-size: 0.9rem; color: #475569; line-height: 1.5;"></p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+            <button type="button" id="customAlertOkBtn" style="background: #0284c7; color: #ffffff; border: none; border-radius: 8px; padding: 10px 20px; font-weight: 600; font-size: 0.9rem; cursor: pointer; width: 100%;">Got it</button>
+        </div>
+    </div>
+</div>
+
 <script src="js/prices.js"></script>
 <script src="js/app.js?v=999"></script>
 </body>
