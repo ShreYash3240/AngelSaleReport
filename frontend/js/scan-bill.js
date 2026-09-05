@@ -189,32 +189,52 @@ receiptImageInput?.addEventListener("change", async (e) => {
 });
 
 // ==================================================
-// OCR CALL VIA BACKEND LAMBDA PROXY
+// OCR CALL VIA BACKEND LAMBDA PROXY WITH AUTO-RETRIES
 // ==================================================
-async function analyzeBillWithGemini(base64Data, mimeType) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/scan-bill`, {
-            method: "POST",
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                imageBase64: base64Data,
-                mimeType: mimeType
-            })
-        });
+async function analyzeBillWithGemini(base64Data, mimeType, retries = 3, delay = 2000) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            if (attempt > 1) {
+                loadingStatus.textContent = `⏳ High demand detected. Retrying analysis (Attempt ${attempt}/${retries})...`;
+            }
 
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.message || data.error || "OCR extraction failed");
+            const response = await fetch(`${API_BASE_URL}/scan-bill`, {
+                method: "POST",
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    imageBase64: base64Data,
+                    mimeType: mimeType
+                })
+            });
+
+            const data = await response.json();
+            
+            if (!response.ok) {
+                const errorMsg = data.message || data.error || "OCR extraction failed";
+                // Check if the error is related to high demand or service overload
+                const isHighDemand = errorMsg.includes("high demand") || errorMsg.includes("Service Unavailable") || response.status === 429 || response.status === 503;
+                
+                if (isHighDemand && attempt < retries) {
+                    console.warn(`Attempt ${attempt} failed due to high demand. Waiting ${delay}ms before retrying...`);
+                    await new Promise(res => setTimeout(res, delay));
+                    delay *= 2; // Exponential backoff (e.g., 2s -> 4s -> 8s)
+                    continue;
+                }
+                
+                throw new Error(errorMsg);
+            }
+
+            populateReviewForm(data);
+            return; // Success, exit function
+        } catch (err) {
+            if (attempt === retries) {
+                console.error("Extraction Error after max retries:", err);
+                alert("Failed to extract data: " + err.message + "\nPlease review the form and enter details manually.");
+                populateReviewForm({});
+            }
         }
-
-        populateReviewForm(data);
-    } catch (err) {
-        console.error("Extraction Error:", err);
-        alert("Failed to extract data: " + err.message + "\nPlease review the form and enter details manually.");
-        populateReviewForm({});
-    } finally {
-        loadingStatus.style.display = "none";
     }
+    loadingStatus.style.display = "none";
 }
 
 // 1. Converts strings like "sai shinde" -> "Sai Shinde"
