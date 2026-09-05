@@ -288,9 +288,9 @@ function renderReportTable(bills) {
             return `<div>${escapeHTML(i.name)} × ${q} (₹${(Number(i.amount) || 0).toFixed(2)})</div>`;
         }).join("");
 
-        // S3 Receipt Vault view action (using action=view)
+        // S3 Receipt Vault view action (renders as a button to trigger the in-page popup modal)
         const receiptAction = bill.receiptS3Key 
-            ? `<a href="${API_BASE_URL}/receipt-url?action=view&s3Key=${encodeURIComponent(bill.receiptS3Key)}" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #e0f2fe; color: #0284c7; border-radius: 6px; font-weight: 600; font-size: 0.75rem; text-decoration: none;" title="View Digital Receipt Slip">📷 View</a>` 
+            ? `<button type="button" class="clear-btn" style="padding: 4px 10px; background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; border-radius: 6px; font-weight: 600; font-size: 0.75rem; cursor: pointer;" onclick="viewReceiptImage('${escapeHTML(bill.receiptS3Key)}')" title="View Original Paper Receipt">📷 View</button>` 
             : `<span style="color: #94a3b8; font-size: 0.75rem;">-</span>`;
 
         const tr = document.createElement("tr");
