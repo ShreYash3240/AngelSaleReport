@@ -482,106 +482,6 @@ document.getElementById("receiptSlipModal")?.addEventListener("click", (e) => {
 });
 
 // ==================================================
-// EVENT LISTENERS
-// ==================================================
-branch?.addEventListener("change", () => {
-    localStorage.setItem("selectedBranch", branch.value);
-});
-
-standard?.addEventListener("change", updateAllRowItemDropdowns);
-paymentMode?.addEventListener("change", handlePaymentMode);
-addItemBtn?.addEventListener("click", addBookItemRow);
-clearBtn?.addEventListener("click", clearForm);
-
-itemsContainer?.addEventListener("change", (e) => {
-    if (e.target.classList.contains("item-name") || e.target.classList.contains("item-qty")) {
-        syncAndRecalculateBooks();
-    }
-});
-
-itemsContainer?.addEventListener("input", (e) => {
-    if (e.target.classList.contains("item-amount")) updateTotal();
-});
-
-itemsContainer?.addEventListener("click", (e) => {
-    if (!e.target.classList.contains("remove-item-btn")) return;
-    if (itemsContainer.querySelectorAll(".item-row").length === 1) {
-        return alert("At least one book item is required.");
-    }
-    e.target.closest(".item-row").remove();
-    updateTotal();
-});
-
-bookBillForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    if (!standard.value.trim()) {
-        alert("Please select a standard.");
-        return standard.focus();
-    }
-
-    const isOnline = paymentMode.value === "Online";
-    if (isOnline && !transactionId.value.trim()) {
-        alert("Transaction ID is required for Online payments.");
-        return transactionId.focus();
-    }
-
-    const rows = itemsContainer.querySelectorAll(".item-row");
-    const items = [];
-
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const name = row.querySelector(".item-name").value;
-        const qty = parseInt(row.querySelector(".item-qty").value, 10);
-        const amt = parseFloat(row.querySelector(".item-amount").value);
-
-        if (!name || isNaN(qty) || isNaN(amt)) {
-            return alert(`Row ${i + 1}: Please complete all item fields.`);
-        }
-
-        items.push({
-            name,
-            quantity: qty,
-            unitPrice: getBookUnitPrice(name),
-            amount: amt
-        });
-    }
-
-    const total = items.reduce((sum, item) => sum + item.amount, 0);
-
-    const payload = {
-        department: "Books",
-        branch: branch.value.trim(),
-        billDate: billDate.value.trim(),
-        billNo: billNo.value.trim(),
-        studentName: toTitleCase(studentName.value.trim()),
-        standard: normalizeStandard(standard.value.trim()),
-        paymentMode: paymentMode.value.trim(),
-        transactionId: isOnline ? transactionId.value.trim() : "",
-        items,
-        total
-    };
-
-    try {
-        const res = await fetch(`${API_BASE_URL}/bills`, {
-            method: "POST",
-            headers: getAuthHeaders(),
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (!res.ok) return alert(data.message || "Failed to save bill.");
-
-        clearForm();
-        setNextBillNumber();
-
-        // 🚀 Trigger printable digital receipt slip modal popup
-        showDigitalReceiptSlip(payload);
-    } catch {
-        alert("Could not reach AWS backend.");
-    }
-});
-
-// ==================================================
 // DIRECT S3 VAULT UPLOAD FOR GENERATED RECEIPTS
 // ==================================================
 async function uploadToS3Vault(dataUrl, mimeType) {
@@ -616,6 +516,137 @@ async function uploadToS3Vault(dataUrl, mimeType) {
 
     return s3Key;
 }
+
+// ==================================================
+// EVENT LISTENERS
+// ==================================================
+branch?.addEventListener("change", () => {
+    localStorage.setItem("selectedBranch", branch.value);
+});
+
+standard?.addEventListener("change", updateAllRowItemDropdowns);
+paymentMode?.addEventListener("change", handlePaymentMode);
+addItemBtn?.addEventListener("click", addBookItemRow);
+clearBtn?.addEventListener("click", clearForm);
+
+itemsContainer?.addEventListener("change", (e) => {
+    if (e.target.classList.contains("item-name") || e.target.classList.contains("item-qty")) {
+        syncAndRecalculateBooks();
+    }
+});
+
+itemsContainer?.addEventListener("input", (e) => {
+    if (e.target.classList.contains("item-amount")) updateTotal();
+});
+
+itemsContainer?.addEventListener("click", (e) => {
+    if (!e.target.classList.contains("remove-item-btn")) return;
+    if (itemsContainer.querySelectorAll(".item-row").length === 1) {
+        showPopup("At least one book item is required in the bill.", "error");
+        return;
+    }
+    e.target.closest(".item-row").remove();
+    updateTotal();
+});
+
+bookBillForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!standard.value.trim()) {
+        showPopup("Please select a standard before saving.", "error");
+        return standard.focus();
+    }
+
+    const isOnline = paymentMode.value === "Online";
+    if (isOnline && !transactionId.value.trim()) {
+        showPopup("Please enter the Transaction ID for Online payments.", "error");
+        return transactionId.focus();
+    }
+
+    const rows = itemsContainer.querySelectorAll(".item-row");
+    const items = [];
+
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const name = row.querySelector(".item-name").value;
+        const qty = parseInt(row.querySelector(".item-qty").value, 10);
+        const amt = parseFloat(row.querySelector(".item-amount").value);
+
+        if (!name || isNaN(qty) || isNaN(amt)) {
+            showPopup(`Row ${i + 1}: Please complete all item fields before saving.`, "error");
+            return;
+        }
+
+        items.push({
+            name,
+            quantity: qty,
+            unitPrice: getBookUnitPrice(name),
+            amount: amt
+        });
+    }
+
+    const total = items.reduce((sum, item) => sum + item.amount, 0);
+
+    const payload = {
+        department: "Books",
+        branch: branch.value.trim(),
+        billDate: billDate.value.trim(),
+        billNo: billNo.value.trim(),
+        studentName: toTitleCase(studentName.value.trim()),
+        standard: normalizeStandard(standard.value.trim()),
+        paymentMode: paymentMode.value.trim(),
+        transactionId: isOnline ? transactionId.value.trim() : "",
+        items,
+        total
+    };
+
+    const saveBtn = document.getElementById("saveBillBtn") || document.querySelector("button[type='submit']");
+
+    try {
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Archiving Slip...";
+        }
+
+        // 1. Render receipt view in DOM for snapshotting
+        showDigitalReceiptSlip(payload);
+        const slipElement = document.getElementById("printableSlipArea");
+
+        // 2. Snapshot the digital receipt slip using html2canvas
+        const canvas = await html2canvas(slipElement, { scale: 2, backgroundColor: "#ffffff" });
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+
+        // 3. Upload snapshot to S3 Vault
+        const s3Key = await uploadToS3Vault(dataUrl, "image/jpeg");
+        if (s3Key) {
+            payload.receiptS3Key = s3Key;
+        }
+
+        // 4. Send complete payload with s3Key to DynamoDB API
+        const res = await fetch(`${API_BASE_URL}/bills`, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Failed to save bill.");
+
+        clearForm();
+        setNextBillNumber();
+
+        // Keep modal open so accountant can review or print the slip
+        showDigitalReceiptSlip(payload);
+        showPopup(`Success! Bill #${payload.billNo} has been saved and archived to S3.`, "success");
+    } catch (err) {
+        console.error("Save/Vault error:", err);
+        showPopup("Could not complete bill archival: " + err.message, "error");
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Save Bill";
+        }
+    }
+});
 
 // ==================================================
 // INITIALIZATION

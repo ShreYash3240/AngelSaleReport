@@ -276,7 +276,7 @@ function syncAndRecalculateItems() {
             amtInput.title = `Unit Price: ₹${unitPrice}`;
         } else if (item && unitPrice === 0) {
             if (item === "BLAZZER") {
-                alert(`Blazzer is not applicable for ${standard.value} (${gender.value})`);
+                showPopup(`Blazzer is not applicable for ${standard.value} (${gender.value})`, "error");
                 itemSelect.value = "";
                 amtInput.value = "";
             } else if (isPT && !size) {
@@ -403,7 +403,7 @@ function showDigitalReceiptSlip(bill) {
             </tr>`;
     }
 
-        const slipArea = document.getElementById("printableSlipArea");
+    const slipArea = document.getElementById("printableSlipArea");
     slipArea.innerHTML = `
         <div class="receipt-border-box" style="border: 2px solid #000; border-radius: 8px; padding: 10px 8px 8px 8px; font-family: 'Arial', sans-serif; color: #000; background: #fff; font-size: 0.72rem; box-sizing: border-box; width: 100%; max-width: 400px; margin: 0 auto;">
             <div style="text-align: center;">
@@ -464,6 +464,42 @@ document.getElementById("receiptSlipModal")?.addEventListener("click", (e) => {
 });
 
 // ==================================================
+// DIRECT S3 VAULT UPLOAD FOR GENERATED RECEIPTS
+// ==================================================
+async function uploadToS3Vault(dataUrl, mimeType) {
+    const byteString = atob(dataUrl.split(",")[1]);
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    for (let i = 0; i < byteString.length; i++) {
+        ia[i] = byteString.charCodeAt(i);
+    }
+    const blob = new Blob([ab], { type: mimeType });
+
+    const res = await fetch(`${API_BASE_URL}/receipt-url?action=upload&mimeType=${encodeURIComponent(mimeType)}`, {
+        headers: getAuthHeaders()
+    });
+
+    if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || "Failed to obtain S3 upload credentials");
+    }
+
+    const { uploadUrl, s3Key } = await res.json();
+
+    const s3Res = await fetch(uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": mimeType },
+        body: blob
+    });
+
+    if (!s3Res.ok) {
+        throw new Error(`Direct S3 upload failed with status ${s3Res.status}`);
+    }
+
+    return s3Key;
+}
+
+// ==================================================
 // EVENT LISTENERS
 // ==================================================
 branch?.addEventListener("change", () => {
@@ -516,7 +552,8 @@ itemsContainer?.addEventListener("input", (e) => {
 itemsContainer?.addEventListener("click", (e) => {
     if (!e.target.classList.contains("remove-item-btn")) return;
     if (itemsContainer.querySelectorAll(".item-row").length === 1) {
-        return alert("At least one item is required.");
+        showPopup("At least one item is required in the bill.", "error");
+        return;
     }
     e.target.closest(".item-row").remove();
     updateTotal();
@@ -527,7 +564,7 @@ billForm?.addEventListener("submit", async (e) => {
 
     const isOnline = paymentMode.value === "Online";
     if (isOnline && !transactionId.value.trim()) {
-        alert("Transaction ID is required for Online payments.");
+        showPopup("Please enter the Transaction ID for Online payments.", "error");
         return transactionId.focus();
     }
 
@@ -542,10 +579,12 @@ billForm?.addEventListener("submit", async (e) => {
         const amt = parseFloat(row.querySelector(".item-amount").value);
 
         if (!name || isNaN(qty) || isNaN(amt)) {
-            return alert(`Row ${i + 1}: Please complete all item fields.`);
+            showPopup(`Row ${i + 1}: Please complete all item fields before saving.`, "error");
+            return;
         }
         if ((name === "PT SHIRT" || name === "PT PANT") && !size) {
-            return alert(`Row ${i + 1} (${name}): Please select a size.`);
+            showPopup(`Row ${i + 1} (${name}): Please select a size.`, "error");
+            return;
         }
 
         items.push({
@@ -573,60 +612,53 @@ billForm?.addEventListener("submit", async (e) => {
         total
     };
 
+    const saveBtn = document.getElementById("saveBillBtn");
+
     try {
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = "Archiving Slip...";
+        }
+
+        // 1. Render receipt view in DOM for snapshotting
+        showDigitalReceiptSlip(payload);
+        const slipElement = document.getElementById("printableSlipArea");
+
+        // 2. Snapshot the digital receipt slip using html2canvas
+        const canvas = await html2canvas(slipElement, { scale: 2, backgroundColor: "#ffffff" });
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+
+        // 3. Upload snapshot to S3 Vault
+        const s3Key = await uploadToS3Vault(dataUrl, "image/jpeg");
+        if (s3Key) {
+            payload.receiptS3Key = s3Key;
+        }
+
+        // 4. Send complete payload with s3Key to DynamoDB API
         const res = await fetch(`${API_BASE_URL}/bills`, {
             method: "POST",
             headers: getAuthHeaders(),
             body: JSON.stringify(payload)
         });
         const data = await res.json();
-        if (!res.ok) return alert(data.message || "Failed to save bill.");
+        if (!res.ok) throw new Error(data.message || "Failed to save bill.");
 
         clearForm();
         setNextBillNumber();
 
-        // 🚀 Trigger exact replica printable digital slip modal popup
+        // Keep modal open so accountant can review or print the slip
         showDigitalReceiptSlip(payload);
-    } catch {
-        alert("Could not reach AWS backend.");
+        showPopup(`Success! Bill #${payload.billNo} has been saved and archived to S3.`, "success");
+    } catch (err) {
+        console.error("Save/Vault error:", err);
+        showPopup("Could not complete bill archival: " + err.message, "error");
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Save Bill";
+        }
     }
 });
-
-// ==================================================
-// DIRECT S3 VAULT UPLOAD FOR GENERATED RECEIPTS
-// ==================================================
-async function uploadToS3Vault(dataUrl, mimeType) {
-    const byteString = atob(dataUrl.split(",")[1]);
-    const ab = new ArrayBuffer(byteString.length);
-    const ia = new Uint8Array(ab);
-    for (let i = 0; i < byteString.length; i++) {
-        ia[i] = byteString.charCodeAt(i);
-    }
-    const blob = new Blob([ab], { type: mimeType });
-
-    const res = await fetch(`${API_BASE_URL}/receipt-url?action=upload&mimeType=${encodeURIComponent(mimeType)}`, {
-        headers: getAuthHeaders()
-    });
-
-    if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || "Failed to obtain S3 upload credentials");
-    }
-
-    const { uploadUrl, s3Key } = await res.json();
-
-    const s3Res = await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": mimeType },
-        body: blob
-    });
-
-    if (!s3Res.ok) {
-        throw new Error(`Direct S3 upload failed with status ${s3Res.status}`);
-    }
-
-    return s3Key;
-}
 
 // ==================================================
 // INITIALIZATION
