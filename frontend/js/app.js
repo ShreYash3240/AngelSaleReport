@@ -364,9 +364,9 @@ function showDigitalReceiptSlip(bill) {
             </tr>`;
     }
 
-    const slipArea = document.getElementById("printableSlipArea");
+        const slipArea = document.getElementById("printableSlipArea");
     slipArea.innerHTML = `
-        <div class="receipt-border-box" style="min-width: 500px; border: 2px solid #000; border-radius: 8px; padding: 10px 8px 8px 8px; font-family: 'Arial', sans-serif; color: #000; background: #fff; font-size: 0.72rem; box-sizing: border-box; width: 100%; max-width: 1280px; margin: 0 auto;">
+        <div class="receipt-border-box" style="border: 2px solid #000; border-radius: 8px; padding: 10px 8px 8px 8px; font-family: 'Arial', sans-serif; color: #000; background: #fff; font-size: 0.72rem; box-sizing: border-box; width: 100%; max-width: 400px; margin: 0 auto;">
             <div style="text-align: center;">
                 <h2 style="margin: 0; font-size: 0.95rem; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase;">SHREE GAJANAN ENTERPRISES</h2>
                 <p style="margin: 3px 0 0 0; font-size: 0.58rem; line-height: 1.15; font-weight: 600;">Ward No. 03, Circuit House Marg Wardha, Maharashtra</p>
@@ -384,7 +384,7 @@ function showDigitalReceiptSlip(bill) {
                 <span style="font-weight: bold; white-space: nowrap;">Std : </span>
                 <span style="border-bottom: 1px solid #000; flex-grow: 1; margin-left: 4px; padding-left: 2px; font-weight: 600;">${bill.standard || ""}</span>
             </div>
-            <table style="width: 100% !important; min-width: 500px; table-layout: fixed !important; border-collapse: collapse !important; border: 1.2px solid #000 !important; font-size: 0.72rem !important; box-sizing: border-box !important; margin: 0 auto !important;">
+            <table style="width: 100% !important; table-layout: fixed !important; border-collapse: collapse !important; border: 1.2px solid #000 !important; font-size: 0.72rem !important; box-sizing: border-box !important; margin: 0 auto !important;">
                 <thead>
                     <tr style="border-bottom: 1.2px solid #000 !important;">
                         <th style="width: 12% !important; border-right: 1.2px solid #000 !important; padding: 4px 2px !important; text-align: center !important; font-weight: bold !important; box-sizing: border-box !important; display: table-cell !important; visibility: visible !important;">SR.</th>
