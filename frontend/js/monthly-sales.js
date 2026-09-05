@@ -292,7 +292,7 @@ function expandBillItems(bill) {
 }
 
 // ==================================================
-// S3 VAULT PRE-SIGNED URL VIEWER (IN-PAGE MODAL)
+// S3 VAULT PRE-SIGNED URL VIEWER
 // ==================================================
 async function viewReceiptImage(s3Key) {
     if (!s3Key) {
